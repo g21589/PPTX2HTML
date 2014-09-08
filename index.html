@@ -28,7 +28,7 @@
 }
 pre {
 	width: 100%;
-	height: 200px;
+	height: 360px;
 	overflow: scroll;
 }
 section {
@@ -42,6 +42,9 @@ section {
 li.slide {
 	margin: 10px 0px;
 	font-size: 18px;
+}
+div.footer {
+	text-align: center;
 }
 </style>
 </head>
@@ -149,17 +152,27 @@ function escapeHtml(text) {
 							var $xml = $(xmlDoc);
 							
 							$xml.find("sp").each(function(index, element) {
-								$e = $(element);
+								var $e = $(element);
 								var type = $e.find("ph").attr("type");
 								var text = $e.find("t").text();
 								if (type == "title" || type == "subTitle") {
 									text = "<h2 data-toggle='tooltip' data-placement='top' title='title'>" + text + "</h2>";
 								} else if (type == "ctrTitle") {
 									text = "<h1 data-toggle='tooltip' data-placement='top' title='ctrTitle'>" + text + "</h1>";
+								} else if (type == "dt") {
+									//text = "<div data-toggle='tooltip' data-placement='top' title='dt'>" + text + "</div>";
+									text = "";
+								} else if (type == "sldNum") {
+									//text = "<div data-toggle='tooltip' data-placement='top' title='sldNum'>" + text + "</div>";
+									text = "";
 								} else {
-									text = "<p data-toggle='tooltip' data-placement='top' title='???'>" + text + "</p>";
+									text = "";
+									$e.find("p").each(function(index, element) {
+										var color = "#" + $(element).find("srgbClr").attr("val");
+										text += "<p style='color: " + color + "'>" + $(element).find("t").text() + "</p>";
+									});
 								}
-								context += text + "<br>";
+								context += text;
 							});
 							
 							$fileContent.append($("<li>", {
