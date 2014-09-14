@@ -33,11 +33,26 @@ pre {
 }
 section {
 	width: 100%;
+	/*max-width: 960px;*/
+	height: 500px;
+	position: relative;
 	border: 1px solid #333;
 	background-color: #EEE;
 	text-align: center;
 	border-radius: 10px;
 	box-shadow: 1px 1px 3px #AAA;
+}
+section div.block {
+	position: absolute;
+	top: 10px;
+	left: 0px;
+	width: 100%;
+}
+section div.content {
+	top: 80px;
+}
+section div.subTitle {
+	top: 160px;
 }
 li.slide {
 	margin: 10px 0px;
@@ -155,10 +170,12 @@ function escapeHtml(text) {
 								var $e = $(element);
 								var type = $e.find("ph").attr("type");
 								var text = $e.find("t").text();
-								if (type == "title" || type == "subTitle") {
-									text = "<h2 data-toggle='tooltip' data-placement='top' title='title'>" + text + "</h2>";
-								} else if (type == "ctrTitle") {
-									text = "<h1 data-toggle='tooltip' data-placement='top' title='ctrTitle'>" + text + "</h1>";
+								if (type == "title") {
+									text = "<div class='block title'><h2 data-toggle='tooltip' data-placement='top' title='title'>" + text + "</h2></div>";
+								} else if (type == "subTitle") {
+									text = "<div class='block subTitle'><h2 data-toggle='tooltip' data-placement='top' title='title'>" + text + "</h2></div>";
+								}else if (type == "ctrTitle") {
+									text = "<div class='block ctrTitle'><h1 data-toggle='tooltip' data-placement='top' title='ctrTitle'>" + text + "</h1></div>";
 								} else if (type == "dt") {
 									//text = "<div data-toggle='tooltip' data-placement='top' title='dt'>" + text + "</div>";
 									text = "";
@@ -166,11 +183,12 @@ function escapeHtml(text) {
 									//text = "<div data-toggle='tooltip' data-placement='top' title='sldNum'>" + text + "</div>";
 									text = "";
 								} else {
-									text = "";
+									text = "<div class='block content'>";
 									$e.find("p").each(function(index, element) {
 										var color = "#" + $(element).find("srgbClr").attr("val");
 										text += "<p style='color: " + color + "'>" + $(element).find("t").text() + "</p>";
 									});
+									text += "</div>";
 								}
 								context += text;
 							});
