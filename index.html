@@ -178,8 +178,11 @@ function getFontSize(element) {
 							text:" (parsed in " + (dateAfter - dateBefore) + "ms)"
 						}));
 						
+						var slides = zip.file(/slide\d+.xml$/);
+						slides.sort(function(a, b) {return parseInt(a.name.substring(16)) - parseInt(b.name.substring(16))});
+						
 						// that, or a good ol' for(var entryName in zip.files)
-						$.each(zip.file(/slide\d+.xml$/), function (index, zipEntry) {
+						$.each(slides, function (index, zipEntry) {
 							
 							var context = "";
 							
