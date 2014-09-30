@@ -121,9 +121,14 @@ function escapeHtml(text) {
 	return text.replace(/[&<>"']/g, function(m) { return map[m]; });
 }
 
+function getFontType(element) {
+	var type = $(element).find("pPr").attr("typeface");
+	return type != 'undefined' ? type : "inherit";
+}
+
 function getFontColor(element) {
 	var color = $(element).find("srgbClr").attr("val");
-	if (color != 'undefined') {
+	if (typeof color != 'undefined') {
 		color = "#" + color;
 	} else {
 		color = "#000";
@@ -133,12 +138,15 @@ function getFontColor(element) {
 
 function getFontSize(element) {
 	var fontSize = (parseInt($(element).find("rPr").attr("sz")) / 100);
-	if (isNaN(fontSize)) {
-		fontSize = "inherit";
-	} else {
-		fontSize += "pt";
-	}
-	return fontSize;
+	return isNaN(fontSize) ? "inherit" : (fontSize + "pt");
+}
+
+function getFontBold(element) {
+	return $(element).find("rPr").attr("b") === "1" ? "bold" : "initial";
+}
+
+function getFontItalic(element) {
+	return $(element).find("rPr").attr("i") === "1" ? "italic" : "normal";
 }
 
 (function () {
@@ -208,7 +216,12 @@ function getFontSize(element) {
 								} else {
 									text = "<div class='block content'>";
 									$e.find("p").each(function(index, element) {
-										text += "<p style='color: " + getFontColor(element) + "; font-size: " + getFontSize(element) + "'>" + $(element).find("t").text() + "</p>";
+										text += "<p style='color: " + getFontColor(element) + 
+												"; font-size: " + getFontSize(element) + 
+												"; font-weight: " + getFontBold(element) + 
+												"; font-style: " + getFontItalic(element) + 
+												"; font-family: " + getFontType(element) + 
+												";'>" + $(element).find("t").text() + "</p>";
 									});
 									text += "</div>";
 								}
