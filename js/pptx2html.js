@@ -12,7 +12,10 @@ function escapeHtml(text) {
 
 function getFontType(element) {
 	var type = $(element).find("pPr").attr("typeface");
-	return type != 'undefined' ? type : "inherit";
+	if (typeof type == 'undefined') {
+		type = $(element).find("latin").attr("typeface");
+	}
+	return typeof type != 'undefined' ? type : "inherit";
 }
 
 function getFontColor(element) {
@@ -52,6 +55,15 @@ function getSize(element) {
 	return (isNaN(w) || isNaN(h)) ? "" : "width:" + w + "px; height:" + h + "px;";
 }
 
+function getSlideSize(zip) {
+	var $presentationXML = $($.parseXML(zip.file("ppt/presentation.xml").asText()));
+	var sizeNode = $presentationXML.find("sldSz");
+	return {
+		"width": (parseInt(sizeNode.attr("cx")) / 10000),
+		"height": (parseInt(sizeNode.attr("cy")) / 10000)
+	};
+}
+
 (function () {
 
 	if (!window.FileReader || !window.ArrayBuffer) {
@@ -88,6 +100,9 @@ function getSize(element) {
 						$title.append($("<span>", {
 							text:" (parsed in " + (dateAfter - dateBefore) + "ms)"
 						}));
+						
+						// Size information
+						var slideSize = getSlideSize(zip);
 						
 						var slides = zip.file(/slide\d+.xml$/);
 						slides.sort(function(a, b) {return parseInt(a.name.substring(16)) - parseInt(b.name.substring(16))});
@@ -134,7 +149,7 @@ function getSize(element) {
 							$fileContent.append($("<li>", {
 								"class" : "slide",
 								html : zipEntry.name + 
-									   "<section>" + context + "</section>" +
+									   "<section style='width:" + slideSize.width + "px; height:" + slideSize.height + "px;'>" + context + "</section>" +
 									   "<details><pre><code class='xml'>" + escapeHtml(vkbeautify.xml(zipEntry.asText(), 4)) + "</code></pre></details>"
 							}));
 							
