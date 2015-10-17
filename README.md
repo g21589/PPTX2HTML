@@ -1,4 +1,4 @@
-PPT2Reveal
+PPTX2HTML
 ==========
 [![MIT License][license-image]][license-url]
 
