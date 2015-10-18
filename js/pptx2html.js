@@ -10,6 +10,29 @@ function escapeHtml(text) {
 	return text.replace(/[&<>"']/g, function(m) { return map[m]; });
 }
 
+function getContentTypes(zip) {
+	var $contentTypesXML = $($.parseXML(zip.file("[Content_Types].xml").asText()));
+	
+	var slidesLocArray = [];
+	var slides = $contentTypesXML.find(
+		"Override[ContentType=\"application/vnd.openxmlformats-officedocument.presentationml.slide+xml\"]");
+	slides.each(function(index) {
+		slidesLocArray.push($(this).attr("PartName").substr(1));
+	});
+	
+	var slideLayoutsLocArray = [];
+	var slideLayouts = $contentTypesXML.find(
+		"Override[ContentType=\"application/vnd.openxmlformats-officedocument.presentationml.slideLayout+xml\"]");
+	slideLayouts.each(function(index) {
+		slideLayoutsLocArray.push($(this).attr("PartName").substr(1));
+	});
+	
+	return {
+		"slides": slidesLocArray,
+		"slideLayouts": slideLayoutsLocArray
+	};
+}
+
 function getFontType(element) {
 	var type = $(element).find("pPr").attr("typeface");
 	if (typeof type == 'undefined') {
@@ -102,20 +125,23 @@ function getSlideSize(zip) {
 							text:" (parsed in " + (dateAfter - dateBefore) + "ms)"
 						}));
 						
+						// Get files information in the pptx
+						var filesInfo = getContentTypes(zip);
+						console.log(filesInfo);
+						
 						// Size information
 						var slideSize = getSlideSize(zip);
 						
-						var slides = zip.file(/slide\d+.xml$/);
-						slides.sort(function(a, b) {return parseInt(a.name.substring(16)) - parseInt(b.name.substring(16))});
-						
-						// that, or a good ol' for(var entryName in zip.files)
-						$.each(slides, function (index, zipEntry) {
+						// Open each slide XML
+						$.each(filesInfo["slides"], function (index, name) {
 							
 							var context = "";
 							
-							var xmlDoc = $.parseXML(zipEntry.asText());
+							var xmlText = zip.file(name).asText();
+							var xmlDoc = $.parseXML(xmlText);
 							var $xml = $(xmlDoc);
 							
+							// parse the slide context and rander into html
 							$xml.find("sp").each(function(index, element) {
 								var $e = $(element);
 								var type = $e.find("ph").attr("type");
@@ -149,13 +175,12 @@ function getSlideSize(zip) {
 							
 							$fileContent.append($("<li>", {
 								"class" : "slide",
-								html : zipEntry.name + 
+								html : name + 
 									   "<section style='width:" + slideSize.width + "px; height:" + slideSize.height + "px;'>" + context + "</section>" +
-									   "<details><pre><code class='xml'>" + escapeHtml(vkbeautify.xml(zipEntry.asText(), 4)) + "</code></pre></details>"
+									   "<details><pre><code class='xml'>" + escapeHtml(vkbeautify.xml(xmlText, 4)) + "</code></pre></details>"
 							}));
 							
 						});
-						// end of the magic !
 						
 					} catch(e) {
 						$fileContent = $("<div>", {
