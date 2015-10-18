@@ -43,24 +43,25 @@ function getFontItalic(element) {
 
 function getPosition(element) {
 	var off = $(element).find("off");
-	var x = parseInt(off.attr("x")) / 10000;
-	var y = parseInt(off.attr("y")) / 10000;
+	var x = parseInt(off.attr("x")) * 96 / 914400;
+	var y = parseInt(off.attr("y")) * 96 / 914400;
 	return (isNaN(x) || isNaN(y)) ? "" : "top:" + y + "px; left:" + x + "px;";
 }
 
 function getSize(element) {
 	var ext = $(element).find("ext");
-	var w = parseInt(ext.attr("cx")) / 10000;
-	var h = parseInt(ext.attr("cy")) / 10000;
+	var w = parseInt(ext.attr("cx")) * 96 / 914400;
+	var h = parseInt(ext.attr("cy")) * 96 / 914400;
 	return (isNaN(w) || isNaN(h)) ? "" : "width:" + w + "px; height:" + h + "px;";
 }
 
 function getSlideSize(zip) {
+	// Pixel = EMUs * Resolution / 914400;  (Resolution = 96)
 	var $presentationXML = $($.parseXML(zip.file("ppt/presentation.xml").asText()));
 	var sizeNode = $presentationXML.find("sldSz");
 	return {
-		"width": (parseInt(sizeNode.attr("cx")) / 10000),
-		"height": (parseInt(sizeNode.attr("cy")) / 10000)
+		"width": (parseInt(sizeNode.attr("cx")) * 96 / 914400),
+		"height": (parseInt(sizeNode.attr("cy")) * 96 / 914400)
 	};
 }
 
