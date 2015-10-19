@@ -199,12 +199,12 @@ function getSlideSize(zip) {
 								*/
 									text = "<div class='block content' style='" + getPosition(element, id, $slideLayoutXML) + getSize(element, id, $slideLayoutXML) + "'>";
 									$e.find("p").each(function(index, element) {
-										text += "<p style='color: " + getFontColor(element) + 
+										text += "<div style='color: " + getFontColor(element) + 
 												"; font-size: " + getFontSize(element, id, $slideLayoutXML) + 
 												"; font-weight: " + getFontBold(element) + 
 												"; font-style: " + getFontItalic(element) + 
 												"; font-family: " + getFontType(element) + 
-												";'>" + $(element).find("t").text() + "</p>";
+												";'>" + $(element).find("t").text() + "</div>";
 									});
 									text += "</div>";
 								//}
