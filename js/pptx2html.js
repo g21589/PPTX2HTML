@@ -37,16 +37,20 @@ function getContentTypes(zip) {
 	};
 }
 
-function getFontType(element) {
-	var type = $(element).find("pPr").attr("typeface");
+function getSpNodeByID($xml, id) {
+	return $xml.find("cNvPr[id=\"" + id + "\"]").parent().parent();
+}
+
+function getFontType($slideSpNode) {
+	var type = $slideSpNode.find("pPr").attr("typeface");
 	if (typeof type == 'undefined') {
-		type = $(element).find("latin").attr("typeface");
+		type = $slideSpNode.find("latin").attr("typeface");
 	}
 	return typeof type != 'undefined' ? type : "inherit";
 }
 
-function getFontColor(element) {
-	var color = $(element).find("srgbClr").attr("val");
+function getFontColor($slideSpNode) {
+	var color = $slideSpNode.find("srgbClr").attr("val");
 	if (typeof color != 'undefined') {
 		color = "#" + color;
 	} else {
@@ -55,47 +59,60 @@ function getFontColor(element) {
 	return color;
 }
 
-function getFontSize(element, id, $layoutXML) {
-	var fontSize = (parseInt($(element).find("rPr").attr("sz")) / 100);
+function getFontSize($slideSpNode, $slideLayoutSpNode) {
+	var fontSize = (parseInt($slideSpNode.find("rPr").attr("sz")) / 100);
 	if (isNaN(fontSize)) {
-		fontSize = (parseInt($layoutXML.find("cNvPr[id=\"" + id + "\"]").parent().parent().find("defRPr").attr("sz")) / 100);
+		fontSize = (parseInt($slideLayoutSpNode.find("defRPr").attr("sz")) / 100);
 	}
 	return isNaN(fontSize) ? "inherit" : (fontSize + "pt");
 }
 
-function getFontBold(element) {
-	return $(element).find("rPr").attr("b") === "1" ? "bold" : "initial";
+function getFontBold($slideSpNode) {
+	return $slideSpNode.find("rPr").attr("b") === "1" ? "bold" : "initial";
 }
 
-function getFontItalic(element) {
-	return $(element).find("rPr").attr("i") === "1" ? "italic" : "normal";
+function getFontItalic($slideSpNode) {
+	return $slideSpNode.find("rPr").attr("i") === "1" ? "italic" : "normal";
 }
 
-function getPosition(element, id, $layoutXML) {
-	var off = $(element).find("off");	
+function getPosition($slideSpNode, $slideLayoutSpNode, $slideMasterSpNode) {
+	var off = $slideSpNode.find("off");	
 	var x = parseInt(off.attr("x")) * 96 / 914400;
 	var y = parseInt(off.attr("y")) * 96 / 914400;
 	if (isNaN(x) || isNaN(y)) {
 		// Get info from layoutXML
-		off = $layoutXML.find("cNvPr[id=\"" + id + "\"]").parent().parent().find("off");
+		off = $slideLayoutSpNode.find("off");
 		x = parseInt(off.attr("x")) * 96 / 914400;
 		y = parseInt(off.attr("y")) * 96 / 914400;
-		console.log([x, y]);
 	}
+	if (isNaN(x) || isNaN(y)) {
+		// Get info from masterXML
+		off = $slideMasterSpNode.find("off");
+		x = parseInt(off.attr("x")) * 96 / 914400;
+		y = parseInt(off.attr("y")) * 96 / 914400;
+	}
+	//console.log([x, y]);
 	return (isNaN(x) || isNaN(y)) ? "" : "top:" + y + "px; left:" + x + "px;";
 }
 
-function getSize(element, id, $layoutXML) {
-	var ext = $(element).find("ext");
+function getSize($slideSpNode, $slideLayoutSpNode, $slideMasterSpNode) {
+	var ext = $slideSpNode.find("ext");
 	var w = parseInt(ext.attr("cx")) * 96 / 914400;
 	var h = parseInt(ext.attr("cy")) * 96 / 914400;
 	if (isNaN(w) || isNaN(h)) {
 		// Get info from layoutXML
-		ext = $layoutXML.find("cNvPr[id=\"" + id + "\"]").parent().parent().find("ext");
+		ext = $slideLayoutSpNode.find("ext");
 		w = parseInt(ext.attr("cx")) * 96 / 914400;
 		h = parseInt(ext.attr("cy")) * 96 / 914400;
-		console.log([w, h]);
 	}
+	if (isNaN(w) || isNaN(h)) {
+		// Get info from masterXML
+		ext = $slideMasterSpNode.find("ext");
+		w = parseInt(ext.attr("cx")) * 96 / 914400;
+		h = parseInt(ext.attr("cy")) * 96 / 914400;
+		
+	}
+	//console.log([w, h]);
 	return (isNaN(w) || isNaN(h)) ? "" : "width:" + w + "px; height:" + h + "px;";
 }
 
@@ -161,9 +178,9 @@ function getSlideSize(zip) {
 							var slideXMLText = zip.file(name).asText();
 							var $slideXML = $($.parseXML(slideXMLText));
 							
-							// Read relationship file of the slide (Get slideLayoutXX.xml)
-							// ppt/slides/slide1.xml
-							// ppt/slides/_rels/slide1.xml.rels
+							// Read relationship filename of the slide (Get slideLayoutXX.xml)
+							// @name: ppt/slides/slide1.xml
+							// @resName: ppt/slides/_rels/slide1.xml.rels
 							var resName = name.replace("slides/slide", "slides/_rels/slide") + ".rels";
 							var $resTarget = openXMLFromZip(zip, resName)
 								.find("Relationship[Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout\"]")
@@ -174,14 +191,29 @@ function getSlideSize(zip) {
 							// Open slideLayoutXX.xml
 							var $slideLayoutXML = openXMLFromZip(zip, $resTarget);
 							
+							// Read slide master filename of the slidelayout (Get slideMasterXX.xml)
+							// @resName: ppt/slideLayouts/slideLayout1.xml
+							// @masterName: ppt/slideLayouts/_rels/slideLayout1.xml.rels
+							var masterName = $resTarget.replace("slideLayouts/slideLayout", "slideLayouts/_rels/slideLayout") + ".rels";
+							var $masterTarget = openXMLFromZip(zip, masterName)
+								.find("Relationship[Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideMaster\"]")
+								.attr("Target")
+								.replace("../", "ppt/");
+							console.log($masterTarget);
+							
+							// Open slideMasterXX.xml
+							var $slideMasterXML = openXMLFromZip(zip, $masterTarget);
+							
 							// Parse the slide context and rander into html
-							$slideXML.find("sp").each(function(index, element) {
-								var $e = $(element);
-								var type = $e.find("ph").attr("type");
-								var text = $e.find("t").text();
-								var id = $e.find("cNvPr").attr("id");
+							$slideXML.find("sp").each(function(index, slideSpNode) {
+								var $slideSpNode = $(slideSpNode);
+								var type = $slideSpNode.find("ph").attr("type");
+								var text = $slideSpNode.find("t").text();
+								var id = $slideSpNode.find("cNvPr").attr("id");
 								console.log("  id: " + id);
 								
+								var $slideLayoutSpNode = getSpNodeByID($slideLayoutXML, id);
+								var $slideMasterSpNode = getSpNodeByID($slideMasterXML, id);
 								/*
 								if (type == "title") {
 									text = "<div class='block title'><h2 data-toggle='tooltip' data-placement='top' title='title'>" + text + "</h2></div>";
@@ -197,14 +229,15 @@ function getSlideSize(zip) {
 									text = "";
 								} else {
 								*/
-									text = "<div class='block content' style='" + getPosition(element, id, $slideLayoutXML) + getSize(element, id, $slideLayoutXML) + "'>";
-									$e.find("p").each(function(index, element) {
-										text += "<div style='color: " + getFontColor(element) + 
-												"; font-size: " + getFontSize(element, id, $slideLayoutXML) + 
-												"; font-weight: " + getFontBold(element) + 
-												"; font-style: " + getFontItalic(element) + 
-												"; font-family: " + getFontType(element) + 
-												";'>" + $(element).find("t").text() + "</div>";
+									text = "<div class='block content' style='" + getPosition($slideSpNode, $slideLayoutSpNode, $slideMasterSpNode) + getSize($slideSpNode, $slideLayoutSpNode, $slideMasterSpNode) + "'>";
+									$slideSpNode.find("p").each(function(index, node) {
+										var $node = $(node);
+										text += "<div style='color: " + getFontColor($node) + 
+												"; font-size: " + getFontSize($node, $slideLayoutSpNode) + 
+												"; font-weight: " + getFontBold($node) + 
+												"; font-style: " + getFontItalic($node) + 
+												"; font-family: " + getFontType($node) + 
+												";'>" + $node.find("t").text() + "</div>";
 									});
 									text += "</div>";
 								//}
