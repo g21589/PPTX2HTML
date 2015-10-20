@@ -1,3 +1,7 @@
+var titleFontSize = 42;
+var bodyFontSize = 20;
+var otherFontSize = 18;
+
 function openXMLFromZip(zipObj, fiilename) {
 	return $($.parseXML(zipObj.file(fiilename).asText()));
 }
@@ -59,10 +63,17 @@ function getFontColor($slideSpNode) {
 	return color;
 }
 
-function getFontSize($slideSpNode, $slideLayoutSpNode) {
+function getFontSize($slideSpNode, $slideLayoutSpNode, type) {
 	var fontSize = (parseInt($slideSpNode.find("rPr").attr("sz")) / 100);
 	if (isNaN(fontSize)) {
 		fontSize = (parseInt($slideLayoutSpNode.find("defRPr").attr("sz")) / 100);
+	}
+	if (isNaN(fontSize)) {
+		if (type == "title" || type == "subTitle" || type == "ctrTitle") {
+			fontSize = titleFontSize;
+		} else {
+			fontSize = otherFontSize;
+		}
 	}
 	return isNaN(fontSize) ? "inherit" : (fontSize + "pt");
 }
@@ -204,6 +215,20 @@ function getSlideSize(zip) {
 							// Open slideMasterXX.xml
 							var $slideMasterXML = openXMLFromZip(zip, $masterTarget);
 							
+							/* 
+							 * Process Slide Master
+							 *   titleStyle
+							 *   bodyStyle
+							 *   otherStyle
+							 */
+							var $titleStyleNode = $slideMasterXML.find("titleStyle");
+							var $bodyStyleNode = $slideMasterXML.find("bodyStyle");
+							var $otherStyleNode = $slideMasterXML.find("otherStyle");
+							
+							titleFontSize = parseInt($titleStyleNode.find("defRPr").attr("sz")) / 100;
+							bodyFontSize = parseInt($bodyStyleNode.find("defRPr").attr("sz")) / 100;   // TODO: level
+							otherFontSize = parseInt($otherStyleNode.find("defRPr").attr("sz")) / 100; // TODO: level
+							
 							// Parse the slide context and rander into html
 							$slideXML.find("sp").each(function(index, slideSpNode) {
 								var $slideSpNode = $(slideSpNode);
@@ -233,7 +258,7 @@ function getSlideSize(zip) {
 									$slideSpNode.find("p").each(function(index, node) {
 										var $node = $(node);
 										text += "<div style='color: " + getFontColor($node) + 
-												"; font-size: " + getFontSize($node, $slideLayoutSpNode) + 
+												"; font-size: " + getFontSize($node, $slideLayoutSpNode, type) + 
 												"; font-weight: " + getFontBold($node) + 
 												"; font-style: " + getFontItalic($node) + 
 												"; font-family: " + getFontType($node) + 
@@ -269,10 +294,8 @@ function getSlideSize(zip) {
 				}
 			})(f);
 
-			// read the file !
-			// readAsArrayBuffer and readAsBinaryString both produce valid content for JSZip.
+			// Read the file
 			reader.readAsArrayBuffer(f);
-			// reader.readAsBinaryString(f);
 		}
 	});
 })();
