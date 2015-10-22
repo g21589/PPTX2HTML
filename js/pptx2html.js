@@ -84,7 +84,11 @@ function processSingleSlide(index, name) {
 			case "p:pic":	// 圖片
 				context += processPicNode($node, resName);
 				break;
-			case "p:grpSp":	// 群組 (recursive call)
+			case "p:grpSp":	// TODO: 群組 (recursive call)
+				/*
+				 * <nvGrpSpPr> id
+				 * <grpSpPr> size
+				 */
 				break;
 			case "p:nvGrpSpPr":
 			case "p:grpSpPr":
@@ -101,8 +105,6 @@ function processSingleSlide(index, name) {
 	}));
 	
 }
-
-//function process
 
 function processSpNode($node, $slideLayoutXML, $slideMasterXML) {
 	var type = $node.find("ph").attr("type");
@@ -121,6 +123,7 @@ function processSpNode($node, $slideLayoutXML, $slideMasterXML) {
 				"; font-weight: " + getFontBold($node) + 
 				"; font-style: " + getFontItalic($node) + 
 				"; font-family: " + getFontType($node) + 
+				"; text-decoration: " + getFontDecoration($node) + 
 				";'>" + $node.find("t").text() + "</div>";
 	});
 	text += "</div>";
@@ -196,12 +199,16 @@ function getFontSize($slideSpNode, $slideLayoutSpNode, type) {
 	return isNaN(fontSize) ? "inherit" : (fontSize + "pt");
 }
 
-function getFontBold($slideSpNode) {
-	return $slideSpNode.find("rPr").attr("b") === "1" ? "bold" : "initial";
+function getFontBold($node) {
+	return $node.find("rPr").attr("b") === "1" ? "bold" : "initial";
 }
 
-function getFontItalic($slideSpNode) {
-	return $slideSpNode.find("rPr").attr("i") === "1" ? "italic" : "normal";
+function getFontItalic($node) {
+	return $node.find("rPr").attr("i") === "1" ? "italic" : "normal";
+}
+
+function getFontDecoration($node) {
+	return $node.find("rPr").attr("u") === "sng" ? "underline" : "initial";
 }
 
 function getPosition($slideSpNode, $slideLayoutSpNode, $slideMasterSpNode) {
