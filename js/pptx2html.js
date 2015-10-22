@@ -73,41 +73,26 @@ function processSingleSlide(index, name) {
 	otherFontSize = parseInt($otherStyleNode.find("defRPr").attr("sz")) / 100; // TODO: level
 	
 	// Parse the slide context and rander into html
-	$slideXML.find("sp").each(function(index, slideSpNode) {
-		var $slideSpNode = $(slideSpNode);
-		var type = $slideSpNode.find("ph").attr("type");
-		var text = $slideSpNode.find("t").text();
-		var id = $slideSpNode.find("cNvPr").attr("id");
-		console.log("  id: " + id);
+	$slideXML.find("cSld").find("spTree").children().each(function(index, node) {
 		
-		var $slideLayoutSpNode = getSpNodeByID($slideLayoutXML, id);
-		var $slideMasterSpNode = getSpNodeByID($slideMasterXML, id);
-
-		text = "<div class='block content' style='" + getPosition($slideSpNode, $slideLayoutSpNode, $slideMasterSpNode) + getSize($slideSpNode, $slideLayoutSpNode, $slideMasterSpNode) + "'>";
-		$slideSpNode.find("p").each(function(index, node) {
-			var $node = $(node);
-			text += "<div style='color: " + getFontColor($node) + 
-					"; font-size: " + getFontSize($node, $slideLayoutSpNode, type) + 
-					"; font-weight: " + getFontBold($node) + 
-					"; font-style: " + getFontItalic($node) + 
-					"; font-family: " + getFontType($node) + 
-					";'>" + $node.find("t").text() + "</div>";
-		});
-		text += "</div>";
-
-		context += text;
-	});
-	
-	$slideXML.find("pic").each(function(index, node) {
+		console.log(this.nodeName);
 		var $node = $(node);
-		var rid = $node.find("blip").attr("r:embed");
-		var $xfrmNode = $node.find("spPr").find("xfrm");
-		var imgName = openXMLFromZip(zip, resName).find("Relationship[Id=\"" + rid + "\"]").attr("Target").replace("../", "ppt/");
-		var imgArrayBuffer = zip.file(imgName).asArrayBuffer();
-		context += "<div class='block content' style='" + getPosition($xfrmNode, null, null) + getSize($xfrmNode, null, null) + 
-				   "'><img src=\"data:image/jpeg;base64," + base64ArrayBuffer(imgArrayBuffer) + "\" style='width: 100%; height: 100%'/></div>";
+		switch (this.nodeName) {
+			case "p:sp":	// 文字
+				context += processSpNode($node, $slideLayoutXML, $slideMasterXML);
+				break;
+			case "p:pic":	// 圖片
+				context += processPicNode($node, resName);
+				break;
+			case "p:grpSp":	// 群組 (recursive call)
+				break;
+			case "p:nvGrpSpPr":
+			case "p:grpSpPr":
+			default:
+		}
+		
 	});
-	
+
 	$fileContent.append($("<li>", {
 		"class" : "slide",
 		html : name + 
@@ -115,6 +100,40 @@ function processSingleSlide(index, name) {
 			   "<details><pre><code class='xml'>" + escapeHtml(vkbeautify.xml(slideXMLText, 4)) + "</code></pre></details>"
 	}));
 	
+}
+
+//function process
+
+function processSpNode($node, $slideLayoutXML, $slideMasterXML) {
+	var type = $node.find("ph").attr("type");
+	var text = $node.find("t").text();
+	var id = $node.find("cNvPr").attr("id");
+	console.log("  id: " + id);
+	
+	var $slideLayoutSpNode = getSpNodeByID($slideLayoutXML, id);
+	var $slideMasterSpNode = getSpNodeByID($slideMasterXML, id);
+
+	text = "<div class='block content' style='" + getPosition($node, $slideLayoutSpNode, $slideMasterSpNode) + getSize($node, $slideLayoutSpNode, $slideMasterSpNode) + "'>";
+	$node.find("p").each(function(index, node) {
+		var $node = $(node);
+		text += "<div style='color: " + getFontColor($node) + 
+				"; font-size: " + getFontSize($node, $slideLayoutSpNode, type) + 
+				"; font-weight: " + getFontBold($node) + 
+				"; font-style: " + getFontItalic($node) + 
+				"; font-family: " + getFontType($node) + 
+				";'>" + $node.find("t").text() + "</div>";
+	});
+	text += "</div>";
+	return text;
+}
+
+function processPicNode($node, resName) {
+	var rid = $node.find("blip").attr("r:embed");
+	var $xfrmNode = $node.find("spPr").find("xfrm");
+	var imgName = openXMLFromZip(zip, resName).find("Relationship[Id=\"" + rid + "\"]").attr("Target").replace("../", "ppt/");
+	var imgArrayBuffer = zip.file(imgName).asArrayBuffer();
+	return "<div class='block content' style='" + getPosition($xfrmNode, null, null) + getSize($xfrmNode, null, null) + 
+			   "'><img src=\"data:image/jpeg;base64," + base64ArrayBuffer(imgArrayBuffer) + "\" style='width: 100%; height: 100%'/></div>";
 }
 
 function getContentTypes(zip) {
@@ -301,13 +320,9 @@ function base64ArrayBuffer(arrayBuffer) {
 					try {
 
 						var dateBefore = new Date();
-						// read the content of the file with JSZip
+						
+						// Read the content of the file with JSZip
 						zip = new JSZip(e.target.result);
-						var dateAfter = new Date();
-
-						$title.append($("<span>", {
-							text:" (parsed in " + (dateAfter - dateBefore) + "ms)"
-						}));
 						
 						// Get files information in the pptx
 						filesInfo = getContentTypes(zip);
@@ -317,6 +332,11 @@ function base64ArrayBuffer(arrayBuffer) {
 						
 						// Open each slide XML
 						$.each(filesInfo["slides"], processSingleSlide);
+						
+						var dateAfter = new Date();
+						$title.append($("<span>", {
+							text:" (parsed in " + (dateAfter - dateBefore) + "ms)"
+						}));
 						
 					} catch(e) {
 						$fileContent = $("<div>", {
