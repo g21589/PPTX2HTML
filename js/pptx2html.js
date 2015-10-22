@@ -115,7 +115,12 @@ function processSpNode($node, $slideLayoutXML, $slideMasterXML) {
 	var $slideLayoutSpNode = getSpNodeByID($slideLayoutXML, id);
 	var $slideMasterSpNode = getSpNodeByID($slideMasterXML, id);
 
-	text = "<div class='block content' style='" + getPosition($node, $slideLayoutSpNode, $slideMasterSpNode) + getSize($node, $slideLayoutSpNode, $slideMasterSpNode) + "'>";
+	text = "<div class='block content " + getAlign($node, type) + 
+		   "' style='" + 
+				getPosition($node, $slideLayoutSpNode, $slideMasterSpNode) + 
+				getSize($node, $slideLayoutSpNode, $slideMasterSpNode) + 
+				getBorder($node) +
+		   "'>";
 	$node.find("p").each(function(index, node) {
 		var $node = $(node);
 		text += "<div style='color: " + getFontColor($node) + 
@@ -164,6 +169,46 @@ function getContentTypes(zip) {
 
 function getSpNodeByID($xml, id) {
 	return $xml.find("cNvPr[id=\"" + id + "\"]").parent().parent();
+}
+
+function getAlign($node, type) {
+	
+	// 上中下對齊: X, <a:bodyPr anchor="ctr">, <a:bodyPr anchor="b">
+	var anchor = $node.find("bodyPr").attr("anchor");
+	
+	// 左中右對齊: X, <a:pPr algn="ctr"/>, <a:pPr algn="r"/>
+	var algn = $node.find("pPr").attr("algn");
+	
+	if (type == "title" || type == "subTitle" || type == "ctrTitle") {
+		return "center-center";
+	}
+	
+	if (anchor === "ctr") {
+		if (algn === "ctr") {
+			return "center-center";
+		} else if (algn === "r") {
+			return "center-right";
+		} else {
+			return "center-left";
+		}
+	} else if (anchor === "b") {
+		if (algn === "ctr") {
+			return "down-center";
+		} else if (algn === "r") {
+			return "down-right";
+		} else {
+			return "down-left";
+		}
+	} else {
+		if (algn === "ctr") {
+			return "up-center";
+		} else if (algn === "r") {
+			return "up-right";
+		} else {
+			return "up-left";
+		}
+	}
+
 }
 
 function getFontType($slideSpNode) {
@@ -250,6 +295,61 @@ function getSize($slideSpNode, $slideLayoutSpNode, $slideMasterSpNode) {
 	}
 	//console.log([w, h]);
 	return (isNaN(w) || isNaN(h)) ? "" : "width:" + w + "px; height:" + h + "px;";
+}
+
+function getBorder($node) {
+	
+	var cssText = "border: ";
+	
+	var $lineNode = $node.find("ln");
+	
+	// 1pt = 12700, default = 0.75pt
+	var borderWidth = parseInt($lineNode.attr("w")) / 12700;
+	if (isNaN(borderWidth)) {
+		cssText += "0.75pt ";
+	} else {
+		cssText += borderWidth + "pt ";
+	}
+	
+	// 
+	var borderType = $lineNode.find("prstDash").attr("val");
+	switch (borderType) {
+	case "dash":
+		cssText += "#000 dashed";
+		break;
+	case "dashDot":
+		cssText += "#000 dashed";
+		break;
+	case "dot":
+		cssText += "#000 dotted";
+		break;
+	case "lgDash":
+		cssText += "#000 dashed";
+		break;
+	case "lgDashDotDot":
+		cssText += "#000 dashed";
+		break;
+	case "sysDash":
+		cssText += "#000 dashed";
+		break;
+	case "sysDashDot":
+		cssText += "#000 dashed";
+		break;
+	case "sysDashDotDot":
+		cssText += "#000 dashed";
+		break;
+	case "sysDot":
+		cssText += "#000 dotted";
+		break;
+	default:
+		//cssText += "1px #000 solid";
+	}
+	
+	return cssText + ";";
+}
+
+function getFill($node) {
+
 }
 
 function getSlideSize(zip) {
