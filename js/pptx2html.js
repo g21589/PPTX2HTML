@@ -8,6 +8,15 @@ var titleFontSize = 42;
 var bodyFontSize = 20;
 var otherFontSize = 18;
 
+var $themeXML = null;
+
+function openThemeXML(zipObj) {
+	var $preResXML = openXMLFromZip(zipObj, "ppt/_rels/presentation.xml.rels");
+	var themeFileName = $preResXML.find("Relationship[Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/theme\"]")
+								.attr("Target");
+	return openXMLFromZip(zipObj, "ppt/" + themeFileName);
+}
+
 function openXMLFromZip(zipObj, fiilename) {
 	return $($.parseXML(zipObj.file(fiilename).asText()));
 }
@@ -120,6 +129,7 @@ function processSpNode($node, $slideLayoutXML, $slideMasterXML) {
 				getPosition($node, $slideLayoutSpNode, $slideMasterSpNode) + 
 				getSize($node, $slideLayoutSpNode, $slideMasterSpNode) + 
 				getBorder($node) +
+				getFill($node) +
 		   "'>";
 	$node.find("p").each(function(index, node) {
 		var $node = $(node);
@@ -349,7 +359,20 @@ function getBorder($node) {
 }
 
 function getFill($node) {
-
+	// From slide
+	var fillColor = $node.find("solidFill").find("srgbClr").attr("val");
+	
+	// From theme
+	if (fillColor === undefined) {
+		fillColor = $themeXML.find($node.find("schemeClr").attr("val")).find("srgbClr").attr("val");
+		// TODO: 較淺, 較深 80%
+	}
+	
+	if (fillColor !== undefined) {
+		return "background-color: #" + fillColor + ";";
+	} else {
+		return "";
+	}
 }
 
 function getSlideSize(zip) {
@@ -430,6 +453,8 @@ function base64ArrayBuffer(arrayBuffer) {
 						
 						// Read the content of the file with JSZip
 						zip = new JSZip(e.target.result);
+						
+						$themeXML = openThemeXML(zip);
 						
 						// Get files information in the pptx
 						filesInfo = getContentTypes(zip);
