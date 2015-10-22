@@ -1,3 +1,9 @@
+var zip = null;
+var $fileContent = null;
+
+var filesInfo = null;
+var slideSize = null;
+
 var titleFontSize = 42;
 var bodyFontSize = 20;
 var otherFontSize = 18;
@@ -16,6 +22,99 @@ function escapeHtml(text) {
 	};
 
 	return text.replace(/[&<>"']/g, function(m) { return map[m]; });
+}
+
+function processSingleSlide(index, name) {
+
+	console.log(name);
+	var context = "";
+	
+	var slideXMLText = zip.file(name).asText();
+	var $slideXML = $($.parseXML(slideXMLText));
+	
+	// Read relationship filename of the slide (Get slideLayoutXX.xml)
+	// @name: ppt/slides/slide1.xml
+	// @resName: ppt/slides/_rels/slide1.xml.rels
+	var resName = name.replace("slides/slide", "slides/_rels/slide") + ".rels";
+	var $resTarget = openXMLFromZip(zip, resName)
+		.find("Relationship[Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout\"]")
+		.attr("Target")
+		.replace("../", "ppt/");
+	console.log($resTarget);
+	
+	// Open slideLayoutXX.xml
+	var $slideLayoutXML = openXMLFromZip(zip, $resTarget);
+	
+	// Read slide master filename of the slidelayout (Get slideMasterXX.xml)
+	// @resName: ppt/slideLayouts/slideLayout1.xml
+	// @masterName: ppt/slideLayouts/_rels/slideLayout1.xml.rels
+	var masterName = $resTarget.replace("slideLayouts/slideLayout", "slideLayouts/_rels/slideLayout") + ".rels";
+	var $masterTarget = openXMLFromZip(zip, masterName)
+		.find("Relationship[Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideMaster\"]")
+		.attr("Target")
+		.replace("../", "ppt/");
+	console.log($masterTarget);
+	
+	// Open slideMasterXX.xml
+	var $slideMasterXML = openXMLFromZip(zip, $masterTarget);
+	
+	/* 
+	 * Process Slide Master
+	 *   titleStyle
+	 *   bodyStyle
+	 *   otherStyle
+	 */
+	var $titleStyleNode = $slideMasterXML.find("titleStyle");
+	var $bodyStyleNode = $slideMasterXML.find("bodyStyle");
+	var $otherStyleNode = $slideMasterXML.find("otherStyle");
+	
+	titleFontSize = parseInt($titleStyleNode.find("defRPr").attr("sz")) / 100;
+	bodyFontSize = parseInt($bodyStyleNode.find("defRPr").attr("sz")) / 100;   // TODO: level
+	otherFontSize = parseInt($otherStyleNode.find("defRPr").attr("sz")) / 100; // TODO: level
+	
+	// Parse the slide context and rander into html
+	$slideXML.find("sp").each(function(index, slideSpNode) {
+		var $slideSpNode = $(slideSpNode);
+		var type = $slideSpNode.find("ph").attr("type");
+		var text = $slideSpNode.find("t").text();
+		var id = $slideSpNode.find("cNvPr").attr("id");
+		console.log("  id: " + id);
+		
+		var $slideLayoutSpNode = getSpNodeByID($slideLayoutXML, id);
+		var $slideMasterSpNode = getSpNodeByID($slideMasterXML, id);
+
+		text = "<div class='block content' style='" + getPosition($slideSpNode, $slideLayoutSpNode, $slideMasterSpNode) + getSize($slideSpNode, $slideLayoutSpNode, $slideMasterSpNode) + "'>";
+		$slideSpNode.find("p").each(function(index, node) {
+			var $node = $(node);
+			text += "<div style='color: " + getFontColor($node) + 
+					"; font-size: " + getFontSize($node, $slideLayoutSpNode, type) + 
+					"; font-weight: " + getFontBold($node) + 
+					"; font-style: " + getFontItalic($node) + 
+					"; font-family: " + getFontType($node) + 
+					";'>" + $node.find("t").text() + "</div>";
+		});
+		text += "</div>";
+
+		context += text;
+	});
+	
+	$slideXML.find("pic").each(function(index, node) {
+		var $node = $(node);
+		var rid = $node.find("blip").attr("r:embed");
+		var $xfrmNode = $node.find("spPr").find("xfrm");
+		var imgName = openXMLFromZip(zip, resName).find("Relationship[Id=\"" + rid + "\"]").attr("Target").replace("../", "ppt/");
+		var imgArrayBuffer = zip.file(imgName).asArrayBuffer();
+		context += "<div class='block content' style='" + getPosition($xfrmNode, null, null) + getSize($xfrmNode, null, null) + 
+				   "'><img src=\"data:image/jpeg;base64," + base64ArrayBuffer(imgArrayBuffer) + "\" style='width: 100%; height: 100%'/></div>";
+	});
+	
+	$fileContent.append($("<li>", {
+		"class" : "slide",
+		html : name + 
+			   "<section style='width:" + slideSize.width + "px; height:" + slideSize.height + "px;'>" + context + "</section>" +
+			   "<details><pre><code class='xml'>" + escapeHtml(vkbeautify.xml(slideXMLText, 4)) + "</code></pre></details>"
+	}));
+	
 }
 
 function getContentTypes(zip) {
@@ -198,12 +297,12 @@ function base64ArrayBuffer(arrayBuffer) {
 						text : theFile.name
 					});
 					$result.append($title);
-					var $fileContent = $("<ul>");
+					$fileContent = $("<ul>");
 					try {
 
 						var dateBefore = new Date();
 						// read the content of the file with JSZip
-						var zip = new JSZip(e.target.result);
+						zip = new JSZip(e.target.result);
 						var dateAfter = new Date();
 
 						$title.append($("<span>", {
@@ -211,118 +310,13 @@ function base64ArrayBuffer(arrayBuffer) {
 						}));
 						
 						// Get files information in the pptx
-						var filesInfo = getContentTypes(zip);
+						filesInfo = getContentTypes(zip);
 						
 						// Size information
-						var slideSize = getSlideSize(zip);
+						slideSize = getSlideSize(zip);
 						
 						// Open each slide XML
-						$.each(filesInfo["slides"], function (index, name) {
-							
-							console.log(name);
-							var context = "";
-							
-							var slideXMLText = zip.file(name).asText();
-							var $slideXML = $($.parseXML(slideXMLText));
-							
-							// Read relationship filename of the slide (Get slideLayoutXX.xml)
-							// @name: ppt/slides/slide1.xml
-							// @resName: ppt/slides/_rels/slide1.xml.rels
-							var resName = name.replace("slides/slide", "slides/_rels/slide") + ".rels";
-							var $resTarget = openXMLFromZip(zip, resName)
-								.find("Relationship[Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout\"]")
-								.attr("Target")
-								.replace("../", "ppt/");
-							console.log($resTarget);
-							
-							// Open slideLayoutXX.xml
-							var $slideLayoutXML = openXMLFromZip(zip, $resTarget);
-							
-							// Read slide master filename of the slidelayout (Get slideMasterXX.xml)
-							// @resName: ppt/slideLayouts/slideLayout1.xml
-							// @masterName: ppt/slideLayouts/_rels/slideLayout1.xml.rels
-							var masterName = $resTarget.replace("slideLayouts/slideLayout", "slideLayouts/_rels/slideLayout") + ".rels";
-							var $masterTarget = openXMLFromZip(zip, masterName)
-								.find("Relationship[Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideMaster\"]")
-								.attr("Target")
-								.replace("../", "ppt/");
-							console.log($masterTarget);
-							
-							// Open slideMasterXX.xml
-							var $slideMasterXML = openXMLFromZip(zip, $masterTarget);
-							
-							/* 
-							 * Process Slide Master
-							 *   titleStyle
-							 *   bodyStyle
-							 *   otherStyle
-							 */
-							var $titleStyleNode = $slideMasterXML.find("titleStyle");
-							var $bodyStyleNode = $slideMasterXML.find("bodyStyle");
-							var $otherStyleNode = $slideMasterXML.find("otherStyle");
-							
-							titleFontSize = parseInt($titleStyleNode.find("defRPr").attr("sz")) / 100;
-							bodyFontSize = parseInt($bodyStyleNode.find("defRPr").attr("sz")) / 100;   // TODO: level
-							otherFontSize = parseInt($otherStyleNode.find("defRPr").attr("sz")) / 100; // TODO: level
-							
-							// Parse the slide context and rander into html
-							$slideXML.find("sp").each(function(index, slideSpNode) {
-								var $slideSpNode = $(slideSpNode);
-								var type = $slideSpNode.find("ph").attr("type");
-								var text = $slideSpNode.find("t").text();
-								var id = $slideSpNode.find("cNvPr").attr("id");
-								console.log("  id: " + id);
-								
-								var $slideLayoutSpNode = getSpNodeByID($slideLayoutXML, id);
-								var $slideMasterSpNode = getSpNodeByID($slideMasterXML, id);
-								/*
-								if (type == "title") {
-									text = "<div class='block title'><h2 data-toggle='tooltip' data-placement='top' title='title'>" + text + "</h2></div>";
-								} else if (type == "subTitle") {
-									text = "<div class='block subTitle'><h2 data-toggle='tooltip' data-placement='top' title='title'>" + text + "</h2></div>";
-								}else if (type == "ctrTitle") {
-									text = "<div class='block ctrTitle'><h1 data-toggle='tooltip' data-placement='top' title='ctrTitle'>" + text + "</h1></div>";
-								} else if (type == "dt") {
-									//text = "<div data-toggle='tooltip' data-placement='top' title='dt'>" + text + "</div>";
-									text = "";
-								} else if (type == "sldNum") {
-									//text = "<div data-toggle='tooltip' data-placement='top' title='sldNum'>" + text + "</div>";
-									text = "";
-								} else {
-								*/
-									text = "<div class='block content' style='" + getPosition($slideSpNode, $slideLayoutSpNode, $slideMasterSpNode) + getSize($slideSpNode, $slideLayoutSpNode, $slideMasterSpNode) + "'>";
-									$slideSpNode.find("p").each(function(index, node) {
-										var $node = $(node);
-										text += "<div style='color: " + getFontColor($node) + 
-												"; font-size: " + getFontSize($node, $slideLayoutSpNode, type) + 
-												"; font-weight: " + getFontBold($node) + 
-												"; font-style: " + getFontItalic($node) + 
-												"; font-family: " + getFontType($node) + 
-												";'>" + $node.find("t").text() + "</div>";
-									});
-									text += "</div>";
-								//}
-								context += text;
-							});
-							
-							$slideXML.find("pic").each(function(index, node) {
-								var $node = $(node);
-								var rid = $node.find("blip").attr("r:embed");
-								var $xfrmNode = $node.find("spPr").find("xfrm");
-								var imgName = openXMLFromZip(zip, resName).find("Relationship[Id=\"" + rid + "\"]").attr("Target").replace("../", "ppt/");
-								var imgArrayBuffer = zip.file(imgName).asArrayBuffer();
-								context += "<div class='block content' style='" + getPosition($xfrmNode, null, null) + getSize($xfrmNode, null, null) + 
-										   "'><img src=\"data:image/jpeg;base64," + base64ArrayBuffer(imgArrayBuffer) + "\" style='width: 100%; height: 100%'/></div>";
-							});
-							
-							$fileContent.append($("<li>", {
-								"class" : "slide",
-								html : name + 
-									   "<section style='width:" + slideSize.width + "px; height:" + slideSize.height + "px;'>" + context + "</section>" +
-									   "<details><pre><code class='xml'>" + escapeHtml(vkbeautify.xml(slideXMLText, 4)) + "</code></pre></details>"
-							}));
-							
-						});
+						$.each(filesInfo["slides"], processSingleSlide);
 						
 					} catch(e) {
 						$fileContent = $("<div>", {
