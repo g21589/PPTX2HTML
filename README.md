@@ -7,7 +7,7 @@ Convert MS-PPTX file to HTML (Reveal.js)
 Version
 ----
 
-0.0.5 (Alpha Test)
+0.1.1 (Beta Test)
 
 License
 ----

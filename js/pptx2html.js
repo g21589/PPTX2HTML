@@ -9,6 +9,11 @@ var bodyFontSize = 20;
 var otherFontSize = 18;
 
 var $themeXML = null;
+var $slideLayoutXML = null;
+var $slideMasterXML = null;
+
+var resName = "";
+var context = "";
 
 function openThemeXML(zipObj) {
 	var $preResXML = openXMLFromZip(zipObj, "ppt/_rels/presentation.xml.rels");
@@ -36,7 +41,7 @@ function escapeHtml(text) {
 function processSingleSlide(index, name) {
 
 	console.log(name);
-	var context = "";
+	context = "";
 	
 	var slideXMLText = zip.file(name).asText();
 	var $slideXML = $($.parseXML(slideXMLText));
@@ -44,7 +49,7 @@ function processSingleSlide(index, name) {
 	// Read relationship filename of the slide (Get slideLayoutXX.xml)
 	// @name: ppt/slides/slide1.xml
 	// @resName: ppt/slides/_rels/slide1.xml.rels
-	var resName = name.replace("slides/slide", "slides/_rels/slide") + ".rels";
+	resName = name.replace("slides/slide", "slides/_rels/slide") + ".rels";
 	var $resTarget = openXMLFromZip(zip, resName)
 		.find("Relationship[Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout\"]")
 		.attr("Target")
@@ -52,7 +57,7 @@ function processSingleSlide(index, name) {
 	console.log($resTarget);
 	
 	// Open slideLayoutXX.xml
-	var $slideLayoutXML = openXMLFromZip(zip, $resTarget);
+	$slideLayoutXML = openXMLFromZip(zip, $resTarget);
 	
 	// Read slide master filename of the slidelayout (Get slideMasterXX.xml)
 	// @resName: ppt/slideLayouts/slideLayout1.xml
@@ -65,7 +70,7 @@ function processSingleSlide(index, name) {
 	console.log($masterTarget);
 	
 	// Open slideMasterXX.xml
-	var $slideMasterXML = openXMLFromZip(zip, $masterTarget);
+	$slideMasterXML = openXMLFromZip(zip, $masterTarget);
 	
 	/* 
 	 * Process Slide Master
@@ -82,29 +87,7 @@ function processSingleSlide(index, name) {
 	otherFontSize = parseInt($otherStyleNode.find("defRPr").attr("sz")) / 100; // TODO: level
 	
 	// Parse the slide context and rander into html
-	$slideXML.find("cSld").find("spTree").children().each(function(index, node) {
-		
-		console.log(this.nodeName);
-		var $node = $(node);
-		switch (this.nodeName) {
-			case "p:sp":	// 文字
-				context += processSpNode($node, $slideLayoutXML, $slideMasterXML);
-				break;
-			case "p:pic":	// 圖片
-				context += processPicNode($node, resName);
-				break;
-			case "p:grpSp":	// TODO: 群組 (recursive call)
-				/*
-				 * <nvGrpSpPr> id
-				 * <grpSpPr> size
-				 */
-				break;
-			case "p:nvGrpSpPr":
-			case "p:grpSpPr":
-			default:
-		}
-		
-	});
+	$slideXML.find("cSld").find("spTree").children().each(processNodesInSlide);
 
 	$fileContent.append($("<li>", {
 		"class" : "slide",
@@ -112,6 +95,44 @@ function processSingleSlide(index, name) {
 			   "<section style='width:" + slideSize.width + "px; height:" + slideSize.height + "px;'>" + context + "</section>" +
 			   "<details><pre><code class='xml'>" + escapeHtml(vkbeautify.xml(slideXMLText, 4)) + "</code></pre></details>"
 	}));
+	
+}
+
+function processNodesInSlide(index, node) {
+		
+	console.log(this.nodeName);
+	var $node = $(node);
+	switch (this.nodeName) {
+		case "p:sp":	// 文字
+			context += processSpNode($node, $slideLayoutXML, $slideMasterXML);
+			break;
+		case "p:pic":	// 圖片
+			context += processPicNode($node, resName);
+			break;
+		case "p:grpSp":	// TODO: 群組 (recursive call)
+			context += "<div class='block group'>";
+			$node.children().each(processNodesInSlide);
+			context += "</div>";
+			break;
+		case "p:nvGrpSpPr":
+			// id
+			$node.find("cNvPr").attr("id");
+			break;
+		case "p:grpSpPr":
+			// size
+			var $xfrmNode = $node.find("xfrm");
+			var x = parseInt($xfrmNode.find("off").attr("x")) * 96 / 914400;
+			var y = parseInt($xfrmNode.find("off").attr("y")) * 96 / 914400;
+			var chx = parseInt($xfrmNode.find("chOff").attr("x")) * 96 / 914400;
+			var chy = parseInt($xfrmNode.find("chOff").attr("y")) * 96 / 914400;
+			var cx = parseInt($xfrmNode.find("ext").attr("cx")) * 96 / 914400;
+			var cy = parseInt($xfrmNode.find("ext").attr("cy")) * 96 / 914400;
+			var chcx = parseInt($xfrmNode.find("chExt").attr("cx")) * 96 / 914400;
+			var chcy = parseInt($xfrmNode.find("chExt").attr("cy")) * 96 / 914400;
+			context = context.replace(new RegExp('>$'), " style='top: " + y + "px; left: " + x + "px; '>");
+			break;
+		default:
+	}
 	
 }
 
@@ -364,7 +385,7 @@ function getFill($node) {
 	
 	// From theme
 	if (fillColor === undefined) {
-		fillColor = $themeXML.find($node.find("schemeClr").attr("val")).find("srgbClr").attr("val");
+		fillColor = $themeXML.find($node.find("solidFill").find("schemeClr").attr("val")).find("srgbClr").attr("val");
 		// TODO: 較淺, 較深 80%
 	}
 	
