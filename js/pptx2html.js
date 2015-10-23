@@ -103,13 +103,28 @@ function processNodesInSlide(index, node) {
 	console.log(this.nodeName);
 	var $node = $(node);
 	switch (this.nodeName) {
-		case "p:sp":	// 文字
+		case "p:sp":	// Shape, Text
 			context += processSpNode($node, $slideLayoutXML, $slideMasterXML);
 			break;
-		case "p:pic":	// 圖片
+		case "p:pic":	// Picture
 			context += processPicNode($node, resName);
 			break;
-		case "p:grpSp":	// TODO: 群組 (recursive call)
+		case "p:graphicFrame":	// Chart, Diagram, Table
+			if ($node.find("graphicData").attr("uri") === 
+					"http://schemas.openxmlformats.org/drawingml/2006/table") {
+				// Table
+				$tableNode = $node.find("graphic").find("tbl");
+				
+			} else if ($node.find("graphicData").attr("uri") === 
+					"http://schemas.openxmlformats.org/drawingml/2006/chart") {
+				// TODO: Chart
+				
+			} else {
+				// TODO: Diagram
+				
+			}
+			break;
+		case "p:grpSp":	// 群組
 			context += "<div class='block group'>";
 			$node.children().each(processNodesInSlide);
 			context += "</div>";
@@ -152,15 +167,21 @@ function processSpNode($node, $slideLayoutXML, $slideMasterXML) {
 				getBorder($node) +
 				getFill($node) +
 		   "'>";
-	$node.find("p").each(function(index, node) {
+	
+	$node.find("txBody").find("p").each(function(index, node) {
 		var $node = $(node);
-		text += "<div style='color: " + getFontColor($node) + 
-				"; font-size: " + getFontSize($node, $slideLayoutSpNode, type) + 
-				"; font-weight: " + getFontBold($node) + 
-				"; font-style: " + getFontItalic($node) + 
-				"; font-family: " + getFontType($node) + 
-				"; text-decoration: " + getFontDecoration($node) + 
-				";'>" + $node.find("t").text() + "</div>";
+		text += "<div>"
+		$node.find("r").each(function(index, node) {
+			var $node = $(node);
+			text += "<span style='color: " + getFontColor($node) + 
+					"; font-size: " + getFontSize($node, $slideLayoutSpNode, type) + 
+					"; font-weight: " + getFontBold($node) + 
+					"; font-style: " + getFontItalic($node) + 
+					"; font-family: " + getFontType($node) + 
+					"; text-decoration: " + getFontDecoration($node) + 
+					";'>" + $node.find("t").text() + "</span>";
+		});
+		text += "</div>"
 	});
 	text += "</div>";
 	return text;
@@ -381,11 +402,11 @@ function getBorder($node) {
 
 function getFill($node) {
 	// From slide
-	var fillColor = $node.find("solidFill").find("srgbClr").attr("val");
+	var fillColor = $node.find("spPr").find("solidFill").find("srgbClr").attr("val");
 	
 	// From theme
 	if (fillColor === undefined) {
-		fillColor = $themeXML.find($node.find("solidFill").find("schemeClr").attr("val")).find("srgbClr").attr("val");
+		fillColor = $themeXML.find($node.find("spPr").find("solidFill").find("schemeClr").attr("val")).find("srgbClr").attr("val");
 		// TODO: 較淺, 較深 80%
 	}
 	

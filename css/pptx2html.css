@@ -18,6 +18,7 @@ section {
 	text-align: center;
 	border-radius: 10px;
 	box-shadow: 1px 1px 3px #AAA;
+	overflow: hidden;
 }
 
 section div.block {
