@@ -129,7 +129,7 @@ function processNodesInSlide(index, node) {
 			var cy = parseInt($xfrmNode.find("ext").attr("cy")) * 96 / 914400;
 			var chcx = parseInt($xfrmNode.find("chExt").attr("cx")) * 96 / 914400;
 			var chcy = parseInt($xfrmNode.find("chExt").attr("cy")) * 96 / 914400;
-			context = context.replace(new RegExp('>$'), " style='top: " + y + "px; left: " + x + "px; '>");
+			context = context.replace(new RegExp('>$'), " style='top: " + (y - chy) + "px; left: " + (x - chx) + "px; '>");
 			break;
 		default:
 	}

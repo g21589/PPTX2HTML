@@ -22,13 +22,12 @@ section {
 
 section div.block {
 	position: absolute;
-	top: 15px;
+	top: 0px;
 	left: 0px;
 	width: 100%;
 }
 
 section div.content {
-	top: 100px;
 	display: flex;
 	flex-direction: column;
 	/*
