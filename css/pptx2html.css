@@ -82,3 +82,11 @@ li.slide {
 div.footer {
 	text-align: center;
 }
+
+section table {
+	position: absolute;
+}
+
+section table, section th, section td {
+   border: 1px solid black;
+}

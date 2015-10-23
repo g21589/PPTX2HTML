@@ -99,7 +99,9 @@ function processSingleSlide(index, name) {
 }
 
 function processNodesInSlide(index, node) {
-		
+	
+	//$("#load-progress").text(index * 100 / filesInfo["slides"].length);
+	
 	console.log(this.nodeName);
 	var $node = $(node);
 	switch (this.nodeName) {
@@ -114,7 +116,19 @@ function processNodesInSlide(index, node) {
 					"http://schemas.openxmlformats.org/drawingml/2006/table") {
 				// Table
 				$tableNode = $node.find("graphic").find("tbl");
-				
+				$xfrmNode = $node.find("xfrm");
+				var tableHtml = "<table style='" + getPosition($xfrmNode, null, null) + getSize($xfrmNode, null, null) + "'>";
+				$tableNode.find("tr").each(function(index, node) {
+					var $node = $(node);
+					tableHtml += "<tr>";
+					$node.find("tc").each(function(index, node) {
+						var $node = $(node);
+						tableHtml += "<td>" + $node.find("t").text() + "</td>"
+					});
+					tableHtml += "</tr>"
+				});
+				tableHtml += "</table>"
+				context += tableHtml;
 			} else if ($node.find("graphicData").attr("uri") === 
 					"http://schemas.openxmlformats.org/drawingml/2006/chart") {
 				// TODO: Chart
