@@ -87,6 +87,7 @@ function processSingleSlide(index, name) {
 	otherFontSize = parseInt($otherStyleNode.find("defRPr").attr("sz")) / 100; // TODO: level
 	
 	// Parse the slide context and rander into html
+	//console.log($slideXML);
 	$slideXML.find("cSld").find("spTree").children().each(processNodesInSlide);
 
 	$fileContent.append($("<li>", {
@@ -184,7 +185,22 @@ function processSpNode($node, $slideLayoutXML, $slideMasterXML) {
 	
 	$node.find("txBody").find("p").each(function(index, node) {
 		var $node = $(node);
-		text += "<div>"
+		text += "<div>";
+		var buChar = $node.find("pPr").find("buChar").attr("char");
+		if (buChar !== undefined) {
+			var $buFontNode = $node.find("pPr").find("buFont");
+			var marginLeft = parseInt($node.find("pPr").attr("marL")) * 96 / 914400;
+			if (isNaN(marginLeft)) {
+				marginLeft = 0;
+			}
+			var marginRight = parseInt($buFontNode.attr("pitchFamily"));
+			if (isNaN(marginRight)) {
+				marginRight = 0;
+			}
+			text += "<span style='font-family: " + $buFontNode.attr("typeface") + 
+					"; margin-left: " + marginLeft + "px" +
+					"; margin-right: " + marginRight + "pt;'>" + buChar + "</span>";
+		}
 		$node.find("r").each(function(index, node) {
 			var $node = $(node);
 			text += "<span style='color: " + getFontColor($node) + 
@@ -278,7 +294,7 @@ function getAlign($node, type) {
 }
 
 function getFontType($slideSpNode) {
-	var type = $slideSpNode.find("pPr").attr("typeface");
+	var type = $slideSpNode.find("rPr").attr("typeface");
 	if (typeof type == 'undefined') {
 		type = $slideSpNode.find("latin").attr("typeface");
 	}
@@ -380,6 +396,9 @@ function getBorder($node) {
 	// 
 	var borderType = $lineNode.find("prstDash").attr("val");
 	switch (borderType) {
+	case "solid":
+		cssText += "#000 solid";
+		break;
 	case "dash":
 		cssText += "#000 dashed";
 		break;
@@ -408,7 +427,7 @@ function getBorder($node) {
 		cssText += "#000 dotted";
 		break;
 	default:
-		//cssText += "1px #000 solid";
+		//cssText += "#000 solid";
 	}
 	
 	return cssText + ";";
