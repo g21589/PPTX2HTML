@@ -1,0 +1,92 @@
+.hidden {
+	display: none;
+}
+
+pre {
+	width: 100%;
+	height: 360px;
+	overflow: scroll;
+}
+
+section {
+	width: 100%;
+	/*max-width: 920px;*/
+	height: 690px;
+	position: relative;
+	border: 1px solid #333;
+	background-color: #EEE;
+	text-align: center;
+	border-radius: 10px;
+	box-shadow: 1px 1px 3px #AAA;
+	overflow: hidden;
+}
+
+section div.block {
+	position: absolute;
+	top: 0px;
+	left: 0px;
+	width: 100%;
+}
+
+section div.content {
+	display: flex;
+	flex-direction: column;
+	/*
+	justify-content: center;
+	align-items: flex-end;
+	*/
+}
+
+section div.up-left {
+	justify-content: flex-start;
+	align-items: flex-start;
+}
+section div.up-center {
+	justify-content: flex-start;
+	align-items: center;
+}
+section div.up-right {
+	justify-content: flex-start;
+	align-items: flex-end;
+}
+section div.center-left {
+	justify-content: center;
+	align-items: flex-start;
+}
+section div.center-center {
+	justify-content: center;
+	align-items: center;
+}
+section div.center-right {
+	justify-content: center;
+	align-items: flex-end;
+}
+section div.down-left {
+	justify-content: flex-end;
+	align-items: flex-start;
+}
+section div.down-center {
+	justify-content: flex-end;
+	align-items: center;
+}
+section div.down-right {
+	justify-content: flex-end;
+	align-items: flex-end;
+}
+
+li.slide {
+	margin: 10px 0px;
+	font-size: 18px;
+}
+
+div.footer {
+	text-align: center;
+}
+
+section table {
+	position: absolute;
+}
+
+section table, section th, section td {
+   border: 1px solid black;
+}
