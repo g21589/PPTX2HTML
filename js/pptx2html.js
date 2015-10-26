@@ -183,7 +183,7 @@ function processSpNode($node, $slideLayoutXML, $slideMasterXML) {
 				getFill($node) +
 		   "'>";
 	
-	$node.find("txBody").find("p").each(function(index, node) {
+	var nodeArr = $node.find("txBody").find("p").each(function(index, node) {
 		var $node = $(node);
 		text += "<div>";
 		var buChar = $node.find("pPr").find("buChar").attr("char");
@@ -201,8 +201,11 @@ function processSpNode($node, $slideLayoutXML, $slideMasterXML) {
 					"; margin-left: " + marginLeft + "px" +
 					"; margin-right: " + marginRight + "pt;'>" + buChar + "</span>";
 		}
-		$node.find("r").each(function(index, node) {
-			var $node = $(node);
+		
+		// With "r"
+		var nodeArr = $node.find("r");
+		for (var i=0; i<nodeArr.length; i++) {
+			var $node = $(nodeArr[i]);
 			text += "<span style='color: " + getFontColor($node) + 
 					"; font-size: " + getFontSize($node, $slideLayoutSpNode, type) + 
 					"; font-weight: " + getFontBold($node) + 
@@ -210,7 +213,19 @@ function processSpNode($node, $slideLayoutXML, $slideMasterXML) {
 					"; font-family: " + getFontType($node) + 
 					"; text-decoration: " + getFontDecoration($node) + 
 					";'>" + $node.find("t").text() + "</span>";
-		});
+		}
+		
+		// Without "r"
+		if (nodeArr.length <= 0) {
+			text += "<span style='color: " + getFontColor($node) + 
+					"; font-size: " + getFontSize($node, $slideLayoutSpNode, type) + 
+					"; font-weight: " + getFontBold($node) + 
+					"; font-style: " + getFontItalic($node) + 
+					"; font-family: " + getFontType($node) + 
+					"; text-decoration: " + getFontDecoration($node) + 
+					";'>" + $node.find("t").text() + "</span>";
+		}
+		
 		text += "</div>"
 	});
 	text += "</div>";
