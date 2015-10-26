@@ -168,20 +168,29 @@ function processNodesInSlide(index, node) {
 
 function processSpNode($node, $slideLayoutXML, $slideMasterXML) {
 	var type = $node.find("ph").attr("type");
-	var text = $node.find("t").text();
+	var name = $node.find("cNvPr").attr("name");
 	var id = $node.find("cNvPr").attr("id");
-	console.log("  id: " + id);
+	var idx = $node.find("nvPr").find("ph").attr("idx");
+	console.log("  id: " + id + ", idx: " + idx);
 	
-	var $slideLayoutSpNode = getSpNodeByID($slideLayoutXML, id);
-	var $slideMasterSpNode = getSpNodeByID($slideMasterXML, id);
-
-	text = "<div class='block content " + getAlign($node, type) + 
+	var $slideLayoutSpNode = $('');
+	var $slideMasterSpNode = $('');
+	
+	if (idx === undefined) {
+		$slideLayoutSpNode = getSpNodeByID($slideLayoutXML, id);
+		$slideMasterSpNode = getSpNodeByID($slideMasterXML, id);
+	} else {
+		var id = getSpNodeByIDX($slideLayoutXML, idx).find("cNvPr").attr("id");
+		$slideMasterSpNode = getSpNodeByID($slideMasterXML, id);
+	}
+	
+	var text = "<div class='block content " + getAlign($node, $slideLayoutSpNode, $slideMasterSpNode, type) + 
 		   "' style='" + 
 				getPosition($node, $slideLayoutSpNode, $slideMasterSpNode) + 
 				getSize($node, $slideLayoutSpNode, $slideMasterSpNode) + 
 				getBorder($node) +
 				getFill($node) +
-		   "'>";
+		   "' _id='" + id + "' _idx='" + idx + "' _type='" + type + "' _name='" + name + "'>";
 	
 	var nodeArr = $node.find("txBody").find("p").each(function(index, node) {
 		var $node = $(node);
@@ -268,13 +277,32 @@ function getSpNodeByID($xml, id) {
 	return $xml.find("cNvPr[id=\"" + id + "\"]").parent().parent();
 }
 
-function getAlign($node, type) {
+function getSpNodeByIDX($xml, idx) {
+	return $xml.find("ph[idx=\"" + idx + "\"]").parent().parent().parent();
+}
+
+function getAlign($node, $slideLayoutSpNode, $slideMasterSpNode, type) {
 	
 	// 上中下對齊: X, <a:bodyPr anchor="ctr">, <a:bodyPr anchor="b">
 	var anchor = $node.find("bodyPr").attr("anchor");
+	if (anchor === undefined) {
+		anchor = $slideLayoutSpNode.find("bodyPr").attr("anchor");
+	}
+	if (anchor === undefined) {
+		anchor = $slideMasterSpNode.find("bodyPr").attr("anchor");
+	}
 	
 	// 左中右對齊: X, <a:pPr algn="ctr"/>, <a:pPr algn="r"/>
 	var algn = $node.find("pPr").attr("algn");
+	if (algn === undefined) {
+		algn = $slideLayoutSpNode.find("pPr").attr("algn");
+	}
+	if (algn === undefined) {
+		algn = $slideMasterSpNode.find("pPr").attr("algn");
+		if (algn === undefined) {
+			algn = $slideMasterSpNode.find("lvl1pPr").attr("algn");
+		}
+	}
 	
 	if (type == "title" || type == "subTitle" || type == "ctrTitle") {
 		return "center-center";
