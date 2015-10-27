@@ -101,8 +101,6 @@ function processSingleSlide(index, name) {
 
 function processNodesInSlide(index, node) {
 	
-	//$("#load-progress").text(index * 100 / filesInfo["slides"].length);
-	
 	console.log(this.nodeName);
 	var $node = $(node);
 	switch (this.nodeName) {
@@ -124,11 +122,11 @@ function processNodesInSlide(index, node) {
 					tableHtml += "<tr>";
 					$node.find("tc").each(function(index, node) {
 						var $node = $(node);
-						tableHtml += "<td>" + $node.find("t").text() + "</td>"
+						tableHtml += "<td>" + $node.find("t").text() + "</td>";
 					});
-					tableHtml += "</tr>"
+					tableHtml += "</tr>";
 				});
-				tableHtml += "</table>"
+				tableHtml += "</table>";
 				context += tableHtml;
 			} else if ($node.find("graphicData").attr("uri") === 
 					"http://schemas.openxmlformats.org/drawingml/2006/chart") {
@@ -159,7 +157,8 @@ function processNodesInSlide(index, node) {
 			var cy = parseInt($xfrmNode.find("ext").attr("cy")) * 96 / 914400;
 			var chcx = parseInt($xfrmNode.find("chExt").attr("cx")) * 96 / 914400;
 			var chcy = parseInt($xfrmNode.find("chExt").attr("cy")) * 96 / 914400;
-			context = context.replace(new RegExp('>$'), " style='top: " + (y - chy) + "px; left: " + (x - chx) + "px; '>");
+			context = context.replace(new RegExp('>$'), " style='top: " + (y - chy) + "px; left: " + (x - chx) + 
+						"px; width: " + cx + "px; height: " + cy + "px;'>");
 			break;
 		default:
 	}
@@ -168,22 +167,45 @@ function processNodesInSlide(index, node) {
 
 function processSpNode($node, $slideLayoutXML, $slideMasterXML) {
 	var type = $node.find("ph").attr("type");
-	var text = $node.find("t").text();
+	var name = $node.find("cNvPr").attr("name");
 	var id = $node.find("cNvPr").attr("id");
-	console.log("  id: " + id);
+	var idx = $node.find("nvPr").find("ph").attr("idx");
+	console.log("  id: " + id + ", idx: " + idx);
 	
-	var $slideLayoutSpNode = getSpNodeByID($slideLayoutXML, id);
-	var $slideMasterSpNode = getSpNodeByID($slideMasterXML, id);
-
-	text = "<div class='block content " + getAlign($node, type) + 
-		   "' style='" + 
+	var $slideLayoutSpNode = $('');
+	var $slideMasterSpNode = $('');
+	
+	if (idx === undefined) {
+		$slideLayoutSpNode = getSpNodeByID($slideLayoutXML, id);
+		$slideMasterSpNode = getSpNodeByID($slideMasterXML, id);
+	} else {
+		var id = getSpNodeByIDX($slideLayoutXML, idx).find("cNvPr").attr("id");
+		$slideMasterSpNode = getSpNodeByID($slideMasterXML, id);
+	}
+	
+	var text = "";
+	var svgMode = false;
+	//if ($node.find("style").length > 0) {
+	//	svgMode = true;
+	//	text = "<svg _id='" + id + "' _idx='" + idx + "' _type='" + type + "' _name='" + name +
+	//			"' style='" + 
+	//				getPosition($node, $slideLayoutSpNode, $slideMasterSpNode) + 
+	//				getSize($node, $slideLayoutSpNode, $slideMasterSpNode) + 
+	//				//getBorder($node) +
+	//				//getFill($node) +
+	//			"'></svg>";
+	//} else {
+		text = "<div class='block content " + getAlign($node, $slideLayoutSpNode, $slideMasterSpNode, type) +
+			"' _id='" + id + "' _idx='" + idx + "' _type='" + type + "' _name='" + name +
+			"' style='" + 
 				getPosition($node, $slideLayoutSpNode, $slideMasterSpNode) + 
 				getSize($node, $slideLayoutSpNode, $slideMasterSpNode) + 
 				getBorder($node) +
 				getFill($node) +
-		   "'>";
+			"'>";
+	//}
 	
-	$node.find("txBody").find("p").each(function(index, node) {
+	var nodeArr = $node.find("txBody").find("p").each(function(index, node) {
 		var $node = $(node);
 		text += "<div>";
 		var buChar = $node.find("pPr").find("buChar").attr("char");
@@ -201,8 +223,11 @@ function processSpNode($node, $slideLayoutXML, $slideMasterXML) {
 					"; margin-left: " + marginLeft + "px" +
 					"; margin-right: " + marginRight + "pt;'>" + buChar + "</span>";
 		}
-		$node.find("r").each(function(index, node) {
-			var $node = $(node);
+		
+		// With "r"
+		var nodeArr = $node.find("r");
+		for (var i=0; i<nodeArr.length; i++) {
+			var $node = $(nodeArr[i]);
 			text += "<span style='color: " + getFontColor($node) + 
 					"; font-size: " + getFontSize($node, $slideLayoutSpNode, type) + 
 					"; font-weight: " + getFontBold($node) + 
@@ -210,10 +235,25 @@ function processSpNode($node, $slideLayoutXML, $slideMasterXML) {
 					"; font-family: " + getFontType($node) + 
 					"; text-decoration: " + getFontDecoration($node) + 
 					";'>" + $node.find("t").text() + "</span>";
-		});
+		}
+		
+		// Without "r"
+		if (nodeArr.length <= 0) {
+			text += "<span style='color: " + getFontColor($node) + 
+					"; font-size: " + getFontSize($node, $slideLayoutSpNode, type) + 
+					"; font-weight: " + getFontBold($node) + 
+					"; font-style: " + getFontItalic($node) + 
+					"; font-family: " + getFontType($node) + 
+					"; text-decoration: " + getFontDecoration($node) + 
+					";'>" + $node.find("t").text() + "</span>";
+		}
+		
 		text += "</div>"
 	});
-	text += "</div>";
+	
+	if (!svgMode) {
+		text += "</div>";
+	}
 	return text;
 }
 
@@ -221,9 +261,28 @@ function processPicNode($node, resName) {
 	var rid = $node.find("blip").attr("r:embed");
 	var $xfrmNode = $node.find("spPr").find("xfrm");
 	var imgName = openXMLFromZip(zip, resName).find("Relationship[Id=\"" + rid + "\"]").attr("Target").replace("../", "ppt/");
+	var imgFileExt = extractFileExtension(imgName).toLowerCase();
 	var imgArrayBuffer = zip.file(imgName).asArrayBuffer();
+	var mimeType = "";
+	switch (imgFileExt) {
+		case "jpg":
+		case "jpeg":
+			mimeType = "image/jpeg";
+			break;
+		case "png":
+			mimeType = "image/png";
+			break;
+		case "emf": // Not native support
+			mimeType = "image/emf";
+			break;
+		case "wmf": // Not native support
+			mimeType = "image/wmf";
+			break;
+		default:
+			mimeType = "image/*";
+	}
 	return "<div class='block content' style='" + getPosition($xfrmNode, null, null) + getSize($xfrmNode, null, null) + 
-			   "'><img src=\"data:image/jpeg;base64," + base64ArrayBuffer(imgArrayBuffer) + "\" style='width: 100%; height: 100%'/></div>";
+			   "'><img src=\"data:" + mimeType + ";base64," + base64ArrayBuffer(imgArrayBuffer) + "\" style='width: 100%; height: 100%'/></div>";
 }
 
 function getContentTypes(zip) {
@@ -253,13 +312,32 @@ function getSpNodeByID($xml, id) {
 	return $xml.find("cNvPr[id=\"" + id + "\"]").parent().parent();
 }
 
-function getAlign($node, type) {
+function getSpNodeByIDX($xml, idx) {
+	return $xml.find("ph[idx=\"" + idx + "\"]").parent().parent().parent();
+}
+
+function getAlign($node, $slideLayoutSpNode, $slideMasterSpNode, type) {
 	
 	// 上中下對齊: X, <a:bodyPr anchor="ctr">, <a:bodyPr anchor="b">
 	var anchor = $node.find("bodyPr").attr("anchor");
+	if (anchor === undefined) {
+		anchor = $slideLayoutSpNode.find("bodyPr").attr("anchor");
+	}
+	if (anchor === undefined) {
+		anchor = $slideMasterSpNode.find("bodyPr").attr("anchor");
+	}
 	
 	// 左中右對齊: X, <a:pPr algn="ctr"/>, <a:pPr algn="r"/>
 	var algn = $node.find("pPr").attr("algn");
+	if (algn === undefined) {
+		algn = $slideLayoutSpNode.find("pPr").attr("algn");
+	}
+	if (algn === undefined) {
+		algn = $slideMasterSpNode.find("pPr").attr("algn");
+		if (algn === undefined) {
+			algn = $slideMasterSpNode.find("lvl1pPr").attr("algn");
+		}
+	}
 	
 	if (type == "title" || type == "subTitle" || type == "ctrTitle") {
 		return "center-center";
@@ -383,9 +461,10 @@ function getBorder($node) {
 	
 	var cssText = "border: ";
 	
+	// 1. presentationML
 	var $lineNode = $node.find("ln");
 	
-	// 1pt = 12700, default = 0.75pt
+	// border width: 1pt = 12700, default = 0.75pt
 	var borderWidth = parseInt($lineNode.attr("w")) / 12700;
 	if (isNaN(borderWidth)) {
 		cssText += "0.75pt ";
@@ -393,40 +472,52 @@ function getBorder($node) {
 		cssText += borderWidth + "pt ";
 	}
 	
-	// 
+	// border color
+	var borderColor = $lineNode.find("solidFill").find("srgbClr").attr("val");
+	if (borderColor === undefined) {
+		borderColor = "000";
+	}
+	cssText += "#" + borderColor + " ";
+	
+	// 2. drawingML namespace
+	//$lineNode = $node.find("style").find("lnRef");
+	
 	var borderType = $lineNode.find("prstDash").attr("val");
 	switch (borderType) {
 	case "solid":
-		cssText += "#000 solid";
+		cssText += "solid";
 		break;
 	case "dash":
-		cssText += "#000 dashed";
+		cssText += "dashed";
 		break;
 	case "dashDot":
-		cssText += "#000 dashed";
+		cssText += "dashed";
 		break;
 	case "dot":
-		cssText += "#000 dotted";
+		cssText += "dotted";
 		break;
 	case "lgDash":
-		cssText += "#000 dashed";
+		cssText += "dashed";
 		break;
 	case "lgDashDotDot":
-		cssText += "#000 dashed";
+		cssText += "dashed";
 		break;
 	case "sysDash":
-		cssText += "#000 dashed";
+		cssText += "dashed";
 		break;
 	case "sysDashDot":
-		cssText += "#000 dashed";
+		cssText += "dashed";
 		break;
 	case "sysDashDotDot":
-		cssText += "#000 dashed";
+		cssText += "dashed";
 		break;
 	case "sysDot":
-		cssText += "#000 dotted";
+		cssText += "dotted";
 		break;
+	case undefined:
+		console.log(borderType);
 	default:
+		console.warn(borderType);
 		//cssText += "#000 solid";
 	}
 	
@@ -434,13 +525,20 @@ function getBorder($node) {
 }
 
 function getFill($node) {
+
+	// 1. presentationML
 	// From slide
-	var fillColor = $node.find("spPr").find("solidFill").find("srgbClr").attr("val");
+	var fillColor = $node.children("spPr").children("solidFill").find("srgbClr").attr("val");
 	
 	// From theme
 	if (fillColor === undefined) {
 		fillColor = $themeXML.find($node.find("spPr").find("solidFill").find("schemeClr").attr("val")).find("srgbClr").attr("val");
 		// TODO: 較淺, 較深 80%
+	}
+	
+	// 2. drawingML namespace
+	if (fillColor === undefined) {
+		fillColor = $themeXML.find($node.find("style").find("fillRef").find("schemeClr").attr("val")).find("srgbClr").attr("val");
 	}
 	
 	if (fillColor !== undefined) {
@@ -494,6 +592,10 @@ function base64ArrayBuffer(arrayBuffer) {
 	}
 
 	return base64;
+}
+
+function extractFileExtension(filename) {
+	return filename.substr((~-filename.lastIndexOf(".") >>> 0) + 2);
 }
 
 (function () {

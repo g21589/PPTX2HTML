@@ -40,6 +40,7 @@ section div.content {
 section div.up-left {
 	justify-content: flex-start;
 	align-items: flex-start;
+	text-align: left;
 }
 section div.up-center {
 	justify-content: flex-start;
@@ -52,6 +53,7 @@ section div.up-right {
 section div.center-left {
 	justify-content: center;
 	align-items: flex-start;
+	text-align: left;
 }
 section div.center-center {
 	justify-content: center;
@@ -64,6 +66,7 @@ section div.center-right {
 section div.down-left {
 	justify-content: flex-end;
 	align-items: flex-start;
+	text-align: left;
 }
 section div.down-center {
 	justify-content: flex-end;
