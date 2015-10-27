@@ -159,7 +159,8 @@ function processNodesInSlide(index, node) {
 			var cy = parseInt($xfrmNode.find("ext").attr("cy")) * 96 / 914400;
 			var chcx = parseInt($xfrmNode.find("chExt").attr("cx")) * 96 / 914400;
 			var chcy = parseInt($xfrmNode.find("chExt").attr("cy")) * 96 / 914400;
-			context = context.replace(new RegExp('>$'), " style='top: " + (y - chy) + "px; left: " + (x - chx) + "px; '>");
+			context = context.replace(new RegExp('>$'), " style='top: " + (y - chy) + "px; left: " + (x - chx) + 
+						"px; width: " + cx + "px; height: " + cy + "px;'>");
 			break;
 		default:
 	}
@@ -184,13 +185,14 @@ function processSpNode($node, $slideLayoutXML, $slideMasterXML) {
 		$slideMasterSpNode = getSpNodeByID($slideMasterXML, id);
 	}
 	
-	var text = "<div class='block content " + getAlign($node, $slideLayoutSpNode, $slideMasterSpNode, type) + 
-		   "' style='" + 
+	var text = "<div class='block content " + getAlign($node, $slideLayoutSpNode, $slideMasterSpNode, type) +
+			"' _id='" + id + "' _idx='" + idx + "' _type='" + type + "' _name='" + name +
+			"' style='" + 
 				getPosition($node, $slideLayoutSpNode, $slideMasterSpNode) + 
 				getSize($node, $slideLayoutSpNode, $slideMasterSpNode) + 
 				getBorder($node) +
 				getFill($node) +
-		   "' _id='" + id + "' _idx='" + idx + "' _type='" + type + "' _name='" + name + "'>";
+			"'>";
 	
 	var nodeArr = $node.find("txBody").find("p").each(function(index, node) {
 		var $node = $(node);
@@ -426,9 +428,10 @@ function getBorder($node) {
 	
 	var cssText = "border: ";
 	
+	// 1. presentationML
 	var $lineNode = $node.find("ln");
 	
-	// 1pt = 12700, default = 0.75pt
+	// border width: 1pt = 12700, default = 0.75pt
 	var borderWidth = parseInt($lineNode.attr("w")) / 12700;
 	if (isNaN(borderWidth)) {
 		cssText += "0.75pt ";
@@ -436,40 +439,50 @@ function getBorder($node) {
 		cssText += borderWidth + "pt ";
 	}
 	
-	// 
+	// border color
+	var borderColor = $lineNode.find("solidFill").find("srgbClr").attr("val");
+	if (borderColor === undefined) {
+		borderColor = "000";
+	}
+	cssText += "#" + borderColor + " ";
+	
+	// 2. drawingML namespace
+	//$lineNode = $node.find("lnRef");
+	
 	var borderType = $lineNode.find("prstDash").attr("val");
 	switch (borderType) {
 	case "solid":
-		cssText += "#000 solid";
+		cssText += "solid";
 		break;
 	case "dash":
-		cssText += "#000 dashed";
+		cssText += "dashed";
 		break;
 	case "dashDot":
-		cssText += "#000 dashed";
+		cssText += "dashed";
 		break;
 	case "dot":
-		cssText += "#000 dotted";
+		cssText += "dotted";
 		break;
 	case "lgDash":
-		cssText += "#000 dashed";
+		cssText += "dashed";
 		break;
 	case "lgDashDotDot":
-		cssText += "#000 dashed";
+		cssText += "dashed";
 		break;
 	case "sysDash":
-		cssText += "#000 dashed";
+		cssText += "dashed";
 		break;
 	case "sysDashDot":
-		cssText += "#000 dashed";
+		cssText += "dashed";
 		break;
 	case "sysDashDotDot":
-		cssText += "#000 dashed";
+		cssText += "dashed";
 		break;
 	case "sysDot":
-		cssText += "#000 dotted";
+		cssText += "dotted";
 		break;
 	default:
+		console.error(borderType);
 		//cssText += "#000 solid";
 	}
 	
@@ -477,13 +490,20 @@ function getBorder($node) {
 }
 
 function getFill($node) {
+
+	// 1. presentationML
 	// From slide
-	var fillColor = $node.find("spPr").find("solidFill").find("srgbClr").attr("val");
+	var fillColor = $node.children("spPr").children("solidFill").find("srgbClr").attr("val");
 	
 	// From theme
 	if (fillColor === undefined) {
 		fillColor = $themeXML.find($node.find("spPr").find("solidFill").find("schemeClr").attr("val")).find("srgbClr").attr("val");
 		// TODO: 較淺, 較深 80%
+	}
+	
+	// 2. drawingML namespace
+	if (fillColor === undefined) {
+		fillColor = $themeXML.find($node.find("style").find("fillRef").find("schemeClr").attr("val")).find("srgbClr").attr("val");
 	}
 	
 	if (fillColor !== undefined) {
