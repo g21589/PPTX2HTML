@@ -101,8 +101,6 @@ function processSingleSlide(index, name) {
 
 function processNodesInSlide(index, node) {
 	
-	//$("#load-progress").text(index * 100 / filesInfo["slides"].length);
-	
 	console.log(this.nodeName);
 	var $node = $(node);
 	switch (this.nodeName) {
@@ -124,11 +122,11 @@ function processNodesInSlide(index, node) {
 					tableHtml += "<tr>";
 					$node.find("tc").each(function(index, node) {
 						var $node = $(node);
-						tableHtml += "<td>" + $node.find("t").text() + "</td>"
+						tableHtml += "<td>" + $node.find("t").text() + "</td>";
 					});
-					tableHtml += "</tr>"
+					tableHtml += "</tr>";
 				});
-				tableHtml += "</table>"
+				tableHtml += "</table>";
 				context += tableHtml;
 			} else if ($node.find("graphicData").attr("uri") === 
 					"http://schemas.openxmlformats.org/drawingml/2006/chart") {
@@ -185,7 +183,19 @@ function processSpNode($node, $slideLayoutXML, $slideMasterXML) {
 		$slideMasterSpNode = getSpNodeByID($slideMasterXML, id);
 	}
 	
-	var text = "<div class='block content " + getAlign($node, $slideLayoutSpNode, $slideMasterSpNode, type) +
+	var text = "";
+	var svgMode = false;
+	//if ($node.find("style").length > 0) {
+	//	svgMode = true;
+	//	text = "<svg _id='" + id + "' _idx='" + idx + "' _type='" + type + "' _name='" + name +
+	//			"' style='" + 
+	//				getPosition($node, $slideLayoutSpNode, $slideMasterSpNode) + 
+	//				getSize($node, $slideLayoutSpNode, $slideMasterSpNode) + 
+	//				//getBorder($node) +
+	//				//getFill($node) +
+	//			"'></svg>";
+	//} else {
+		text = "<div class='block content " + getAlign($node, $slideLayoutSpNode, $slideMasterSpNode, type) +
 			"' _id='" + id + "' _idx='" + idx + "' _type='" + type + "' _name='" + name +
 			"' style='" + 
 				getPosition($node, $slideLayoutSpNode, $slideMasterSpNode) + 
@@ -193,6 +203,7 @@ function processSpNode($node, $slideLayoutXML, $slideMasterXML) {
 				getBorder($node) +
 				getFill($node) +
 			"'>";
+	//}
 	
 	var nodeArr = $node.find("txBody").find("p").each(function(index, node) {
 		var $node = $(node);
@@ -239,7 +250,10 @@ function processSpNode($node, $slideLayoutXML, $slideMasterXML) {
 		
 		text += "</div>"
 	});
-	text += "</div>";
+	
+	if (!svgMode) {
+		text += "</div>";
+	}
 	return text;
 }
 
@@ -247,9 +261,28 @@ function processPicNode($node, resName) {
 	var rid = $node.find("blip").attr("r:embed");
 	var $xfrmNode = $node.find("spPr").find("xfrm");
 	var imgName = openXMLFromZip(zip, resName).find("Relationship[Id=\"" + rid + "\"]").attr("Target").replace("../", "ppt/");
+	var imgFileExt = extractFileExtension(imgName).toLowerCase();
 	var imgArrayBuffer = zip.file(imgName).asArrayBuffer();
+	var mimeType = "";
+	switch (imgFileExt) {
+		case "jpg":
+		case "jpeg":
+			mimeType = "image/jpeg";
+			break;
+		case "png":
+			mimeType = "image/png";
+			break;
+		case "emf": // Not native support
+			mimeType = "image/emf";
+			break;
+		case "wmf": // Not native support
+			mimeType = "image/wmf";
+			break;
+		default:
+			mimeType = "image/*";
+	}
 	return "<div class='block content' style='" + getPosition($xfrmNode, null, null) + getSize($xfrmNode, null, null) + 
-			   "'><img src=\"data:image/jpeg;base64," + base64ArrayBuffer(imgArrayBuffer) + "\" style='width: 100%; height: 100%'/></div>";
+			   "'><img src=\"data:" + mimeType + ";base64," + base64ArrayBuffer(imgArrayBuffer) + "\" style='width: 100%; height: 100%'/></div>";
 }
 
 function getContentTypes(zip) {
@@ -447,7 +480,7 @@ function getBorder($node) {
 	cssText += "#" + borderColor + " ";
 	
 	// 2. drawingML namespace
-	//$lineNode = $node.find("lnRef");
+	//$lineNode = $node.find("style").find("lnRef");
 	
 	var borderType = $lineNode.find("prstDash").attr("val");
 	switch (borderType) {
@@ -481,8 +514,10 @@ function getBorder($node) {
 	case "sysDot":
 		cssText += "dotted";
 		break;
+	case undefined:
+		console.log(borderType);
 	default:
-		console.error(borderType);
+		console.warn(borderType);
 		//cssText += "#000 solid";
 	}
 	
@@ -557,6 +592,10 @@ function base64ArrayBuffer(arrayBuffer) {
 	}
 
 	return base64;
+}
+
+function extractFileExtension(filename) {
+	return filename.substr((~-filename.lastIndexOf(".") >>> 0) + 2);
 }
 
 (function () {
