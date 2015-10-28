@@ -14,7 +14,7 @@ section {
 	height: 690px;
 	position: relative;
 	border: 1px solid #333;
-	background-color: #EEE;
+	background-color: #EFEFEF;
 	text-align: center;
 	border-radius: 10px;
 	box-shadow: 1px 1px 3px #AAA;
@@ -91,5 +91,10 @@ section table {
 }
 
 section table, section th, section td {
-   border: 1px solid black;
+	border: 1px solid black;
+}
+
+section svg.drawing {
+	position: absolute;
+	overflow: visible;
 }

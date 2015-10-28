@@ -185,16 +185,94 @@ function processSpNode($node, $slideLayoutXML, $slideMasterXML) {
 	
 	var text = "";
 	var svgMode = false;
-	//if ($node.find("style").length > 0) {
-	//	svgMode = true;
-	//	text = "<svg _id='" + id + "' _idx='" + idx + "' _type='" + type + "' _name='" + name +
-	//			"' style='" + 
-	//				getPosition($node, $slideLayoutSpNode, $slideMasterSpNode) + 
-	//				getSize($node, $slideLayoutSpNode, $slideMasterSpNode) + 
-	//				//getBorder($node) +
-	//				//getFill($node) +
-	//			"'></svg>";
-	//} else {
+	if ($node.find("style").length > 0) {
+		svgMode = true;
+		//text = "<svg _id='" + id + "' _idx='" + idx + "' _type='" + type + "' _name='" + name +
+		//		"' style='" + 
+		//			getPosition($node, $slideLayoutSpNode, $slideMasterSpNode) + 
+		//			getSize($node, $slideLayoutSpNode, $slideMasterSpNode) + 
+					//getBorder($node) +
+					//getFill($node) +
+		//		"'><ellipse cx='200' cy='80' rx='100' ry='50' style='fill:yellow; stroke:purple; stroke-width:2'/></svg>";
+		
+		var off = $node.find("off");	
+		var x = parseInt(off.attr("x")) * 96 / 914400;
+		var y = parseInt(off.attr("y")) * 96 / 914400;
+		
+		var ext = $node.find("ext");
+		var w = parseInt(ext.attr("cx")) * 96 / 914400;
+		var h = parseInt(ext.attr("cy")) * 96 / 914400;
+		
+		var svgDom = $(document.createElement('svg'));
+		svgDom.addClass("drawing");
+		svgDom.attr({
+			"_id": id,
+			"_idx": idx,
+			"_type": type,
+			"_name": name
+		});
+		svgDom.css({
+			"top": y,
+			"left": x,
+			"width": w,
+			"height": h
+		});
+		
+		var fillColor = "#" + $themeXML.find($node.find("style").find("fillRef").find("schemeClr").attr("val")).find("srgbClr").attr("val");
+		
+		var borderColorStr = $themeXML.find($node.find("style").find("lnRef").find("schemeClr").attr("val")).find("srgbClr").attr("val");
+		var borderColor = undefined;
+		if (borderColorStr !== undefined) {
+			borderColor = new colz.Color("#" + borderColorStr);
+			borderColor.setLum(borderColor.hsl.l / 1.5);
+		}
+		
+		switch ($node.find("prstGeom").attr("prst")) {
+			case "rect":
+				var gDom = $(document.createElement('rect'));
+				gDom.attr({
+					"x": 0,
+					"y": 0,
+					"width": w,
+					"height": h,
+					"fill": fillColor,
+					"stroke": (borderColor === undefined || borderColor.rgb === undefined) ? "" : borderColor.rgb.toString(),
+					"stroke-width": "1pt"
+				});
+				svgDom.append(gDom);
+				break;
+			case "ellipse":
+				var gDom = $(document.createElement('ellipse'));
+				gDom.attr({
+					"cx": w / 2,
+					"cy": h / 2,
+					"rx": w / 2,
+					"ry": h / 2,
+					"fill": fillColor,
+					"stroke": (borderColor === undefined || borderColor.rgb === undefined) ? "" : borderColor.rgb.toString(),
+					"stroke-width": "1pt"
+				});
+				svgDom.append(gDom);
+				break;
+			case "roundRect":
+				var gDom = $(document.createElement('rect'));
+				gDom.attr({
+					"x": 0,
+					"y": 0,
+					"width": w,
+					"height": h,
+					"rx": 15,
+					"ry": 15,
+					"fill": fillColor,
+					"stroke": (borderColor === undefined || borderColor.rgb === undefined) ? "" : borderColor.rgb.toString(),
+					"stroke-width": "1pt"
+				});
+				svgDom.append(gDom);
+				break;
+			default:
+		}
+		text = svgDom[0].outerHTML;
+	} else {
 		text = "<div class='block content " + getAlign($node, $slideLayoutSpNode, $slideMasterSpNode, type) +
 			"' _id='" + id + "' _idx='" + idx + "' _type='" + type + "' _name='" + name +
 			"' style='" + 
@@ -203,7 +281,7 @@ function processSpNode($node, $slideLayoutXML, $slideMasterXML) {
 				getBorder($node) +
 				getFill($node) +
 			"'>";
-	//}
+	}
 	
 	var nodeArr = $node.find("txBody").find("p").each(function(index, node) {
 		var $node = $(node);
