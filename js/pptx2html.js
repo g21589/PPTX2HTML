@@ -1,3 +1,7 @@
+$("#uploadFile").onchange = function () {
+	document.getElementById("uploadFile").value = this.value;
+};
+
 var zip = null;
 var $fileContent = null;
 
@@ -684,7 +688,7 @@ function extractFileExtension(filename) {
 	}
 
 	var $result = $("#result");
-	$("#file").on("change", function(evt) {
+	$("#uploadBtn").on("change", function(evt) {
 
 		$result.html("");
 		$("#result_block").removeClass("hidden").addClass("show");
