@@ -204,6 +204,7 @@ function processSpNode($node, $slideLayoutXML, $slideMasterXML) {
 		var h = parseInt(ext.attr("cy")) * 96 / 914400;
 		
 		var svgDom = $(document.createElement('svg'));
+		svgDom.addClass("drawing");
 		svgDom.attr({
 			"_id": id,
 			"_idx": idx,
@@ -211,7 +212,6 @@ function processSpNode($node, $slideLayoutXML, $slideMasterXML) {
 			"_name": name
 		});
 		svgDom.css({
-			"position": "absolute",
 			"top": y,
 			"left": x,
 			"width": w,
@@ -219,10 +219,13 @@ function processSpNode($node, $slideLayoutXML, $slideMasterXML) {
 		});
 		
 		var fillColor = "#" + $themeXML.find($node.find("style").find("fillRef").find("schemeClr").attr("val")).find("srgbClr").attr("val");
-		//var borderColor = new colz.Color("#" + $themeXML.find($node.find("style").find("lnRef").find("schemeClr").attr("val")).find("srgbClr").attr("val"));
-		//borderColor.setLum(borderColor.hsl.l / 1.5);
 		
-		//console.log(borderColor.hsl.l / 1.5);
+		var borderColorStr = $themeXML.find($node.find("style").find("lnRef").find("schemeClr").attr("val")).find("srgbClr").attr("val");
+		var borderColor = undefined;
+		if (borderColorStr !== undefined) {
+			borderColor = new colz.Color("#" + borderColorStr);
+			borderColor.setLum(borderColor.hsl.l / 1.5);
+		}
 		
 		switch ($node.find("prstGeom").attr("prst")) {
 			case "rect":
@@ -232,8 +235,9 @@ function processSpNode($node, $slideLayoutXML, $slideMasterXML) {
 					"y": 0,
 					"width": w,
 					"height": h,
-					"fill": fillColor
-					//"stroke": borderColor.rgb.toString()
+					"fill": fillColor,
+					"stroke": (borderColor === undefined || borderColor.rgb === undefined) ? "" : borderColor.rgb.toString(),
+					"stroke-width": "1pt"
 				});
 				svgDom.append(gDom);
 				break;
@@ -244,8 +248,9 @@ function processSpNode($node, $slideLayoutXML, $slideMasterXML) {
 					"cy": h / 2,
 					"rx": w / 2,
 					"ry": h / 2,
-					"fill": fillColor
-					//"stroke": borderColor.rgb.toString()
+					"fill": fillColor,
+					"stroke": (borderColor === undefined || borderColor.rgb === undefined) ? "" : borderColor.rgb.toString(),
+					"stroke-width": "1pt"
 				});
 				svgDom.append(gDom);
 				break;
@@ -258,8 +263,9 @@ function processSpNode($node, $slideLayoutXML, $slideMasterXML) {
 					"height": h,
 					"rx": 15,
 					"ry": 15,
-					"fill": fillColor
-					//"stroke": borderColor.rgb.toString()
+					"fill": fillColor,
+					"stroke": (borderColor === undefined || borderColor.rgb === undefined) ? "" : borderColor.rgb.toString(),
+					"stroke-width": "1pt"
 				});
 				svgDom.append(gDom);
 				break;
