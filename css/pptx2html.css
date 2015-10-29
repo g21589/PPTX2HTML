@@ -115,3 +115,8 @@ section svg.drawing {
     opacity: 0;
     filter: alpha(opacity=0);
 }
+
+#pptx-thumb {
+	min-width: 240px;
+	height: 180px;
+}

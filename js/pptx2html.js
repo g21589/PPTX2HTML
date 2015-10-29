@@ -713,6 +713,10 @@ function extractFileExtension(filename) {
 						// Read the content of the file with JSZip
 						zip = new JSZip(e.target.result);
 						
+						// Get thumbnail of pptx file
+						$("#pptx-thumb").attr("src", "data:image/jpeg;base64," + base64ArrayBuffer(zip.file("docProps/thumbnail.jpeg").asArrayBuffer()));
+						
+						// Theme XML
 						$themeXML = openThemeXML(zip);
 						
 						// Get files information in the pptx
@@ -726,7 +730,7 @@ function extractFileExtension(filename) {
 						
 						var dateAfter = new Date();
 						$title.append($("<span>", {
-							text:" (parsed in " + (dateAfter - dateBefore) + "ms)"
+							text: " (parsed in " + (dateAfter - dateBefore) + "ms)"
 						}));
 						
 					} catch(e) {
