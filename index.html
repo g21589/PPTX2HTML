@@ -108,13 +108,28 @@ if (window.Worker) {
 		
 		var fileName = evt.target.files[0];
 		
-		var worker = new Worker('worker.js');
-	
-		worker.addEventListener('message', function(e) {
-			console.log('Worker: ', e.data);
-		}, false);
+		// Read the file
+		var reader = new FileReader();
+		reader.onload = (function(theFile) {
+			return function(e) {
+				
+				// Web Worker
+				var worker = new Worker('worker.js');
+			
+				worker.addEventListener('message', function(e) {
+				
+					console.info('Worker: ', e.data);
+					//$("#pptx-thumb").attr("src", "data:image/jpeg;base64," + e.data);
+					
+				}, false);
+				
+				worker.postMessage(e.target.result);
+				
+			}
+		})(fileName);
+		reader.readAsArrayBuffer(fileName);
+			
 		
-		worker.postMessage(fileName);
 		
 	});
 	
