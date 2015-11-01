@@ -95,7 +95,31 @@
 <!-- Include all compiled plugins (below), or include individual files as needed -->
 <script type="text/javascript" src="js/bootstrap.min.js"></script>
 
-<script type="text/javascript" src="./js/pptx2html.js"></script>
+<!--script type="text/javascript" src="./js/pptx2html.js"></script-->
+
+<script type="text/javascript">
+if (window.Worker) {
+	
+	var $result = $("#result");
+	$("#uploadBtn").on("change", function(evt) {
+
+		$result.html("");
+		$("#result_block").removeClass("hidden").addClass("show");
+		
+		var fileName = evt.target.files[0];
+		
+		var worker = new Worker('worker.js');
+	
+		worker.addEventListener('message', function(e) {
+			console.log('Worker: ', e.data);
+		}, false);
+		
+		worker.postMessage(fileName);
+		
+	});
+	
+}
+</script>
 
 </body>
 </html>
