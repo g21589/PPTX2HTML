@@ -77,7 +77,9 @@
 				<div id="error_block" class="alert alert-danger hidden">
 					You will need a recent browser to use this demo :(
 				</div>
-
+				<div id="info_block" class="alert alert-success" role="alert">
+				
+				</div>
 				<div id="result_block" class="hidden">
 					<h3>內容 :</h3>
 					<div id="result"></div>
@@ -114,12 +116,28 @@ if (window.Worker) {
 			return function(e) {
 				
 				// Web Worker
-				var worker = new Worker('worker.js');
+				var worker = new Worker('./js/worker.js');
 			
 				worker.addEventListener('message', function(e) {
-				
-					console.info('Worker: ', e.data);
-					//$("#pptx-thumb").attr("src", "data:image/jpeg;base64," + e.data);
+					
+					var msg = e.data;
+					
+					switch(msg.type) {
+						case "pptx-thumb":
+							$("#pptx-thumb").attr("src", "data:image/jpeg;base64," + msg.data);
+							break;
+						case "WARN":
+							console.warn('Worker: ', msg.data);
+							break;
+						case "ERROR":
+							console.error('Worker: ', msg.data);
+							$("#error_block").text(msg.data);
+							break;
+						case "INFO":
+						default:
+							console.info('Worker: ', msg.data);
+							$("#info_block").text(msg.data);
+					}
 					
 				}, false);
 				
@@ -128,8 +146,6 @@ if (window.Worker) {
 			}
 		})(fileName);
 		reader.readAsArrayBuffer(fileName);
-			
-		
 		
 	});
 	
