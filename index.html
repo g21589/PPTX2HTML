@@ -116,6 +116,7 @@ if (window.Worker) {
 			return function(e) {
 				
 				// Web Worker
+				
 				var worker = new Worker('./js/worker.js');
 			
 				worker.addEventListener('message', function(e) {
@@ -136,7 +137,7 @@ if (window.Worker) {
 						case "INFO":
 						default:
 							console.info('Worker: ', msg.data);
-							$("#info_block").text(msg.data);
+							$("#info_block").html($("#info_block").html() + "<br><br>" + msg.data);
 					}
 					
 				}, false);
