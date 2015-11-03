@@ -124,6 +124,9 @@ if (window.Worker) {
 					var msg = e.data;
 					
 					switch(msg.type) {
+						case "slide":
+							$result.append(msg.data);
+							break;
 						case "pptx-thumb":
 							$("#pptx-thumb").attr("src", "data:image/jpeg;base64," + msg.data);
 							break;
@@ -137,7 +140,7 @@ if (window.Worker) {
 						case "INFO":
 						default:
 							console.info('Worker: ', msg.data);
-							$("#info_block").html($("#info_block").html() + "<br><br>" + msg.data);
+							//$("#info_block").html($("#info_block").html() + "<br><br>" + msg.data);
 					}
 					
 				}, false);

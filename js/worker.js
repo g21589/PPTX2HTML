@@ -18,24 +18,28 @@ onmessage = function(e) {
 	});
 	
 	var filesInfo = getContentTypes(zip);
+	/*
 	self.postMessage({
 		"type": "INFO",
 		"data": JSON.stringify( filesInfo )
 	});
+	*/
 	
 	var slideSize = getSlideSize(zip);
+	/*
 	self.postMessage({
 		"type": "INFO",
 		"data": JSON.stringify( slideSize )
 	});
+	*/
 	
 	for (var i=0; i<filesInfo["slides"].length; i++) {
 		var filename = filesInfo["slides"][i];
-		processSingleSlide(zip, filename, i);
-		//self.postMessage({
-		//	"type": "INFO",
-		//	"data": JSON.stringify( content )
-		//});
+		var slideHtml = processSingleSlide(zip, filename, i, slideSize);
+		self.postMessage({
+			"type": "slide",
+			"data": slideHtml
+		});
 	}
 }
 
@@ -75,7 +79,12 @@ function getSlideSize(zip) {
 	};
 }
 
-function processSingleSlide(zip, sldFileName, index) {
+function processSingleSlide(zip, sldFileName, index, slideSize) {
+	
+	self.postMessage({
+		"type": "INFO",
+		"data": "Processing slide" + index
+	});
 	
 	// =====< Step 1 >=====
 	// Read relationship filename of the slide (Get slideLayoutXX.xml)
@@ -83,42 +92,84 @@ function processSingleSlide(zip, sldFileName, index) {
 	// @resName: ppt/slides/_rels/slide1.xml.rels
 	resName = sldFileName.replace("slides/slide", "slides/_rels/slide") + ".rels";
 	var resContent = readXmlFile(zip, resName);
+	var RelationshipArray = resContent["?xml"]["Relationships"]["Relationship"];
+	var layoutFilename = "";
+	var slideResObj = {};
+	if (RelationshipArray.constructor === Array) {
+		for (var i=0; i<RelationshipArray.length; i++) {
+			switch (RelationshipArray[i]["attrs"]["Type"]) {
+				case "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout":
+					layoutFilename = RelationshipArray[i]["attrs"]["Target"].replace("../", "ppt/");
+					break;
+				case "http://schemas.openxmlformats.org/officeDocument/2006/relationships/notesSlide":
+				case "http://schemas.openxmlformats.org/officeDocument/2006/relationships/image":
+				case "http://schemas.openxmlformats.org/officeDocument/2006/relationships/chart":
+				case "http://schemas.openxmlformats.org/officeDocument/2006/relationships/hyperlink":
+				default:
+					slideResObj[RelationshipArray[i]["attrs"]["Id"]] = {
+						"type": RelationshipArray[i]["attrs"]["Type"].replace("http://schemas.openxmlformats.org/officeDocument/2006/relationships/", ""),
+						"target": RelationshipArray[i]["attrs"]["Target"].replace("../", "ppt/")
+					};
+			}
+		}
+	} else {
+		layoutFilename = RelationshipArray["attrs"]["Target"].replace("../", "ppt/");
+	}
 	
+	// Open slideLayoutXX.xml
+	var slideLayoutContent = readXmlFile(zip, layoutFilename);
 	self.postMessage({
 		"type": "INFO",
-		"data": JSON.stringify( resContent["?xml"]["Relationships"]["Relationship"] )
+		"data": JSON.stringify( layoutFilename )
 	});
-
-		//.find("Relationship[Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout\"]")
-		//.attr("Target")
-		//.replace("../", "ppt/");
 	
 	// =====< Step 2 >=====
 	// Read slide master filename of the slidelayout (Get slideMasterXX.xml)
 	// @resName: ppt/slideLayouts/slideLayout1.xml
 	// @masterName: ppt/slideLayouts/_rels/slideLayout1.xml.rels
-	/*
-	var masterName = $resTarget.replace("slideLayouts/slideLayout", "slideLayouts/_rels/slideLayout") + ".rels";
-	var $masterTarget = openXMLFromZip(zip, masterName)
-		.find("Relationship[Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideMaster\"]")
-		.attr("Target")
-		.replace("../", "ppt/");
-	console.log($masterTarget);
-	
+	var slideLayoutResFilename = layoutFilename.replace("slideLayouts/slideLayout", "slideLayouts/_rels/slideLayout") + ".rels";
+	var slideLayoutResContent = readXmlFile(zip, slideLayoutResFilename);
+	RelationshipArray = slideLayoutResContent["?xml"]["Relationships"]["Relationship"];
+	var masterFilename = "";
+	if (RelationshipArray.constructor === Array) {
+		for (var i=0; i<RelationshipArray.length; i++) {
+			switch (RelationshipArray[i]["attrs"]["Type"]) {
+				case "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideMaster":
+					masterFilename = RelationshipArray[i]["attrs"]["Target"].replace("../", "ppt/");
+					break;
+				default:
+			}
+		}
+	} else {
+		masterFilename = RelationshipArray["attrs"]["Target"].replace("../", "ppt/");
+	}
 	// Open slideMasterXX.xml
-	$slideMasterXML = openXMLFromZip(zip, $masterTarget);
-	*/
+	var slideMasterContent = readXmlFile(zip, masterFilename);
+	self.postMessage({
+		"type": "INFO",
+		"data": JSON.stringify( masterFilename )
+	});
 	
 	// =====< Step 3 >=====
 	var content = readXmlFile(zip, sldFileName);
 	var nodes = content["?xml"]["p:sld"]["p:cSld"]["p:spTree"];
+	var warpObj = {
+		"zip": zip,
+		"slideLayoutContent": slideLayoutContent,
+		"slideMasterContent": slideMasterContent,
+		"slideResObj": slideResObj
+	};
+	
+	var result = "<li class='slide'>" + sldFileName + "<section style='width:" + slideSize.width + "px; height:" + slideSize.height + "px;'>"
+	
 	for (var nodeKey in nodes) {
-		processNodesInSlide(nodeKey, nodes[nodeKey]);
+		result += processNodesInSlide(nodeKey, nodes[nodeKey], warpObj);
 	}
 	
+	return result + "</section></li>";
 }
 
-function processNodesInSlide(nodeKey, nodeValue) {
+function processNodesInSlide(nodeKey, nodeValue, warpObj) {
 	
 	var result = "";
 	
@@ -127,7 +178,7 @@ function processNodesInSlide(nodeKey, nodeValue) {
 			//result += processSpNode($node, $slideLayoutXML, $slideMasterXML);
 			break;
 		case "p:pic":	// Picture
-			result += processPicNode(nodeValue, null);
+			result += processPicNode(nodeValue, warpObj);
 			break;
 		case "p:graphicFrame":	// Chart, Diagram, Table
 			/*
@@ -190,13 +241,17 @@ function processNodesInSlide(nodeKey, nodeValue) {
 	
 }
 
-function processPicNode($node, resName) {
+function processPicNode(node, warpObj) {
 	
-	/*
-	var rid = $node.find("blip").attr("r:embed");
-	var $xfrmNode = $node.find("spPr").find("xfrm");
-	var imgName = openXMLFromZip(zip, resName).find("Relationship[Id=\"" + rid + "\"]").attr("Target").replace("../", "ppt/");
+	self.postMessage({
+		"type": "INFO",
+		"data": JSON.stringify( node )
+	});
+	
+	var rid = node["p:blipFill"]["a:blip"]["attrs"]["r:embed"];
+	var imgName = warpObj["slideResObj"][rid]["target"];
 	var imgFileExt = extractFileExtension(imgName).toLowerCase();
+	var zip = warpObj["zip"];
 	var imgArrayBuffer = zip.file(imgName).asArrayBuffer();
 	var mimeType = "";
 	switch (imgFileExt) {
@@ -216,9 +271,6 @@ function processPicNode($node, resName) {
 		default:
 			mimeType = "image/*";
 	}
-	return "<div class='block content' style='" + getPosition($xfrmNode, null, null) + getSize($xfrmNode, null, null) + 
+	return "<div class='block content' style='" + /*getPosition($xfrmNode, null, null) + getSize($xfrmNode, null, null) + */
 			   "'><img src=\"data:" + mimeType + ";base64," + base64ArrayBuffer(imgArrayBuffer) + "\" style='width: 100%; height: 100%'/></div>";
-	*/
-	
-	return "";
 }
