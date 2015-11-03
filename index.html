@@ -130,12 +130,18 @@ if (window.Worker) {
 						case "pptx-thumb":
 							$("#pptx-thumb").attr("src", "data:image/jpeg;base64," + msg.data);
 							break;
+						case "ExecutionTime":
+							$("#info_block").html("Execution Time: " + msg.data + " (ms)");
+							break;
 						case "WARN":
 							console.warn('Worker: ', msg.data);
 							break;
 						case "ERROR":
 							console.error('Worker: ', msg.data);
 							$("#error_block").text(msg.data);
+							break;
+						case "DEBUG":
+							console.debug('Worker: ', msg.data);
 							break;
 						case "INFO":
 						default:

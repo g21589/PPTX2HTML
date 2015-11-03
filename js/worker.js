@@ -9,6 +9,8 @@ importScripts(
 
 onmessage = function(e) {
 	
+	var dateBefore = new Date();
+	
 	var zip = new JSZip(e.data);
 	
 	var pptxThumbImg = base64ArrayBuffer(zip.file("docProps/thumbnail.jpeg").asArrayBuffer());
@@ -41,6 +43,13 @@ onmessage = function(e) {
 			"data": slideHtml
 		});
 	}
+	
+	var dateAfter = new Date();
+	self.postMessage({
+		"type": "ExecutionTime",
+		"data": dateAfter - dateBefore
+	});
+	
 }
 
 function readXmlFile(zip, filename) {
@@ -163,7 +172,13 @@ function processSingleSlide(zip, sldFileName, index, slideSize) {
 	var result = "<li class='slide'>" + sldFileName + "<section style='width:" + slideSize.width + "px; height:" + slideSize.height + "px;'>"
 	
 	for (var nodeKey in nodes) {
-		result += processNodesInSlide(nodeKey, nodes[nodeKey], warpObj);
+		if (nodes[nodeKey].constructor === Array) {
+			for (var i=0; i<nodes[nodeKey].length; i++) {
+				result += processNodesInSlide(nodeKey, nodes[nodeKey][i], warpObj);
+			}
+		} else {
+			result += processNodesInSlide(nodeKey, nodes[nodeKey], warpObj);
+		}
 	}
 	
 	return result + "</section></li>";
@@ -175,7 +190,7 @@ function processNodesInSlide(nodeKey, nodeValue, warpObj) {
 	
 	switch (nodeKey) {
 		case "p:sp":	// Shape, Text
-			//result += processSpNode($node, $slideLayoutXML, $slideMasterXML);
+			result += processSpNode(nodeValue, warpObj);
 			break;
 		case "p:pic":	// Picture
 			result += processPicNode(nodeValue, warpObj);
@@ -210,9 +225,17 @@ function processNodesInSlide(nodeKey, nodeValue, warpObj) {
 			*/
 			break;
 		case "p:grpSp":	// 群組
-			//result += "<div class='block group'>";
-			//$node.children().each(processNodesInSlide);
-			//result += "</div>";
+			result += "<div class='block group'>";			
+			for (var nodeKey in nodeValue) {
+				if (nodeValue[nodeKey].constructor === Array) {
+					for (var i=0; i<nodeValue[nodeKey].length; i++) {
+						result += processNodesInSlide(nodeKey, nodeValue[nodeKey][i], warpObj);
+					}
+				} else {
+					result += processNodesInSlide(nodeKey, nodeValue[nodeKey], warpObj);
+				}
+			}
+			result += "</div>";
 			break;
 		case "p:nvGrpSpPr":
 			// id
@@ -241,12 +264,219 @@ function processNodesInSlide(nodeKey, nodeValue, warpObj) {
 	
 }
 
-function processPicNode(node, warpObj) {
+function processSpNode(node, warpObj) {
+	
+	var id = node["p:nvSpPr"]["p:cNvSpPr"]["attrs"]["id"];
+	var name = node["p:nvSpPr"]["p:cNvSpPr"]["attrs"]["name"];
+	var idx = (node["p:nvSpPr"]["p:nvPr"]["p:ph"] === undefined) ? undefined : node["p:nvSpPr"]["p:nvPr"]["p:ph"]["attrs"]["idx"];
+	var type = (node["p:nvSpPr"]["p:nvPr"]["p:ph"] === undefined) ? undefined : node["p:nvSpPr"]["p:nvPr"]["p:ph"]["attrs"]["type"];
 	
 	self.postMessage({
-		"type": "INFO",
+		"type": "DEBUG",
+		"data": {id, name, idx, type}
+	});
+	
+	var text = "";
+	
+	// Text
+	if (node["p:txBody"] === undefined) {
+		return text;
+	}
+	
+	if (node["p:txBody"]["a:p"]["a:r"] === undefined) {
+		// Without "r"
+		if (node["p:txBody"]["a:p"].constructor === Array) {
+			for (var i=0; i<node["p:txBody"]["a:p"].length; i++) {
+				text += "<div><span>" + node["p:txBody"]["a:p"][i]["a:t"] + "</span></div>";
+			}
+		} else {
+			text += "<div><span>" + node["p:txBody"]["a:p"]["a:t"] + "</span></div>";
+		}
+	} else {
+		// With "r"
+		if (node["p:txBody"]["a:p"].constructor === Array) {
+			for (var i=0; i<node["p:txBody"]["a:p"].length; i++) {
+				text += "<div><span>" + node["p:txBody"]["a:p"][i]["a:r"]["a:t"] + "</span></div>";
+			}
+		} else {
+			text += "<div><span>" + node["p:txBody"]["a:p"]["a:r"]["a:t"] + "</span></div>";
+		}
+	}
+	
+	
+/*	
+	var $slideLayoutSpNode = $('');
+	var $slideMasterSpNode = $('');
+	
+	if (idx === undefined) {
+		$slideLayoutSpNode = getSpNodeByID($slideLayoutXML, id);
+		$slideMasterSpNode = getSpNodeByID($slideMasterXML, id);
+	} else {
+		var id = getSpNodeByIDX($slideLayoutXML, idx).find("cNvPr").attr("id");
+		$slideMasterSpNode = getSpNodeByID($slideMasterXML, id);
+	}
+	
+	
+	var svgMode = false;
+	if ($node.find("style").length > 0) {
+		svgMode = true;
+		//text = "<svg _id='" + id + "' _idx='" + idx + "' _type='" + type + "' _name='" + name +
+		//		"' style='" + 
+		//			getPosition($node, $slideLayoutSpNode, $slideMasterSpNode) + 
+		//			getSize($node, $slideLayoutSpNode, $slideMasterSpNode) + 
+					//getBorder($node) +
+					//getFill($node) +
+		//		"'><ellipse cx='200' cy='80' rx='100' ry='50' style='fill:yellow; stroke:purple; stroke-width:2'/></svg>";
+		
+		var off = $node.find("off");	
+		var x = parseInt(off.attr("x")) * 96 / 914400;
+		var y = parseInt(off.attr("y")) * 96 / 914400;
+		
+		var ext = $node.find("ext");
+		var w = parseInt(ext.attr("cx")) * 96 / 914400;
+		var h = parseInt(ext.attr("cy")) * 96 / 914400;
+		
+		var svgDom = $(document.createElement('svg'));
+		svgDom.addClass("drawing");
+		svgDom.attr({
+			"_id": id,
+			"_idx": idx,
+			"_type": type,
+			"_name": name
+		});
+		svgDom.css({
+			"top": y,
+			"left": x,
+			"width": w,
+			"height": h
+		});
+		
+		var fillColor = "#" + $themeXML.find($node.find("style").find("fillRef").find("schemeClr").attr("val")).find("srgbClr").attr("val");
+		
+		var borderColorStr = $themeXML.find($node.find("style").find("lnRef").find("schemeClr").attr("val")).find("srgbClr").attr("val");
+		var borderColor = undefined;
+		if (borderColorStr !== undefined) {
+			borderColor = new colz.Color("#" + borderColorStr);
+			borderColor.setLum(borderColor.hsl.l / 1.5);
+		}
+		
+		switch ($node.find("prstGeom").attr("prst")) {
+			case "rect":
+				var gDom = $(document.createElement('rect'));
+				gDom.attr({
+					"x": 0,
+					"y": 0,
+					"width": w,
+					"height": h,
+					"fill": fillColor,
+					"stroke": (borderColor === undefined || borderColor.rgb === undefined) ? "" : borderColor.rgb.toString(),
+					"stroke-width": "1pt"
+				});
+				svgDom.append(gDom);
+				break;
+			case "ellipse":
+				var gDom = $(document.createElement('ellipse'));
+				gDom.attr({
+					"cx": w / 2,
+					"cy": h / 2,
+					"rx": w / 2,
+					"ry": h / 2,
+					"fill": fillColor,
+					"stroke": (borderColor === undefined || borderColor.rgb === undefined) ? "" : borderColor.rgb.toString(),
+					"stroke-width": "1pt"
+				});
+				svgDom.append(gDom);
+				break;
+			case "roundRect":
+				var gDom = $(document.createElement('rect'));
+				gDom.attr({
+					"x": 0,
+					"y": 0,
+					"width": w,
+					"height": h,
+					"rx": 15,
+					"ry": 15,
+					"fill": fillColor,
+					"stroke": (borderColor === undefined || borderColor.rgb === undefined) ? "" : borderColor.rgb.toString(),
+					"stroke-width": "1pt"
+				});
+				svgDom.append(gDom);
+				break;
+			default:
+		}
+		text = svgDom[0].outerHTML;
+	} else {
+		text = "<div class='block content " + getAlign($node, $slideLayoutSpNode, $slideMasterSpNode, type) +
+			"' _id='" + id + "' _idx='" + idx + "' _type='" + type + "' _name='" + name +
+			"' style='" + 
+				getPosition($node, $slideLayoutSpNode, $slideMasterSpNode) + 
+				getSize($node, $slideLayoutSpNode, $slideMasterSpNode) + 
+				getBorder($node) +
+				getFill($node) +
+			"'>";
+	}
+	
+	var nodeArr = $node.find("txBody").find("p").each(function(index, node) {
+		var $node = $(node);
+		text += "<div>";
+		var buChar = $node.find("pPr").find("buChar").attr("char");
+		if (buChar !== undefined) {
+			var $buFontNode = $node.find("pPr").find("buFont");
+			var marginLeft = parseInt($node.find("pPr").attr("marL")) * 96 / 914400;
+			if (isNaN(marginLeft)) {
+				marginLeft = 0;
+			}
+			var marginRight = parseInt($buFontNode.attr("pitchFamily"));
+			if (isNaN(marginRight)) {
+				marginRight = 0;
+			}
+			text += "<span style='font-family: " + $buFontNode.attr("typeface") + 
+					"; margin-left: " + marginLeft + "px" +
+					"; margin-right: " + marginRight + "pt;'>" + buChar + "</span>";
+		}
+		
+		// With "r"
+		var nodeArr = $node.find("r");
+		for (var i=0; i<nodeArr.length; i++) {
+			var $node = $(nodeArr[i]);
+			text += "<span style='color: " + getFontColor($node) + 
+					"; font-size: " + getFontSize($node, $slideLayoutSpNode, type) + 
+					"; font-weight: " + getFontBold($node) + 
+					"; font-style: " + getFontItalic($node) + 
+					"; font-family: " + getFontType($node) + 
+					"; text-decoration: " + getFontDecoration($node) + 
+					";'>" + $node.find("t").text() + "</span>";
+		}
+		
+		// Without "r"
+		if (nodeArr.length <= 0) {
+			text += "<span style='color: " + getFontColor($node) + 
+					"; font-size: " + getFontSize($node, $slideLayoutSpNode, type) + 
+					"; font-weight: " + getFontBold($node) + 
+					"; font-style: " + getFontItalic($node) + 
+					"; font-family: " + getFontType($node) + 
+					"; text-decoration: " + getFontDecoration($node) + 
+					";'>" + $node.find("t").text() + "</span>";
+		}
+		
+		text += "</div>"
+	});
+	
+	if (!svgMode) {
+		text += "</div>";
+	}
+*/
+	return text;
+}
+
+function processPicNode(node, warpObj) {
+	
+	/*
+	self.postMessage({
+		"type": "DEBUG",
 		"data": JSON.stringify( node )
 	});
+	*/
 	
 	var rid = node["p:blipFill"]["a:blip"]["attrs"]["r:embed"];
 	var imgName = warpObj["slideResObj"][rid]["target"];
@@ -271,6 +501,53 @@ function processPicNode(node, warpObj) {
 		default:
 			mimeType = "image/*";
 	}
-	return "<div class='block content' style='" + /*getPosition($xfrmNode, null, null) + getSize($xfrmNode, null, null) + */
+	return "<div class='block content' style='" + getPosition(node, null, null) + getSize(node, null, null) +
 			   "'><img src=\"data:" + mimeType + ";base64," + base64ArrayBuffer(imgArrayBuffer) + "\" style='width: 100%; height: 100%'/></div>";
+}
+
+function getPosition(slideSpNode, slideLayoutSpNode, slideMasterSpNode) {
+
+	var off = slideSpNode["p:spPr"]["a:xfrm"]["a:off"]["attrs"];
+	var x = parseInt(off["x"]) * 96 / 914400;
+	var y = parseInt(off["y"]) * 96 / 914400;
+/*
+	if (isNaN(x) || isNaN(y)) {
+		// Get info from layoutXML
+		off = slideLayoutSpNode.find("off");
+		x = parseInt(off.attr("x")) * 96 / 914400;
+		y = parseInt(off.attr("y")) * 96 / 914400;
+	}
+	if (isNaN(x) || isNaN(y)) {
+		// Get info from masterXML
+		off = slideMasterSpNode.find("off");
+		x = parseInt(off.attr("x")) * 96 / 914400;
+		y = parseInt(off.attr("y")) * 96 / 914400;
+	}
+	//console.log([x, y]);
+*/
+	return (isNaN(x) || isNaN(y)) ? "" : "top:" + y + "px; left:" + x + "px;";
+}
+
+function getSize(slideSpNode, slideLayoutSpNode, slideMasterSpNode) {
+	
+	var ext = slideSpNode["p:spPr"]["a:xfrm"]["a:ext"]["attrs"];
+	var w = parseInt(ext["cx"]) * 96 / 914400;
+	var h = parseInt(ext["cy"]) * 96 / 914400;
+/*
+	if (isNaN(w) || isNaN(h)) {
+		// Get info from layoutXML
+		ext = slideLayoutSpNode.find("ext");
+		w = parseInt(ext.attr("cx")) * 96 / 914400;
+		h = parseInt(ext.attr("cy")) * 96 / 914400;
+	}
+	if (isNaN(w) || isNaN(h)) {
+		// Get info from masterXML
+		ext = slideMasterSpNode.find("ext");
+		w = parseInt(ext.attr("cx")) * 96 / 914400;
+		h = parseInt(ext.attr("cy")) * 96 / 914400;
+		
+	}
+	//console.log([w, h]);
+*/	
+	return (isNaN(w) || isNaN(h)) ? "" : "width:" + w + "px; height:" + h + "px;";
 }
