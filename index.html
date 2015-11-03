@@ -62,15 +62,15 @@
 		
 		<br>
 		
-		<!--div class="row">
+		<div class="row">
 			<div class="col-lg-12">
 				<div class="progress">
-					<div id="load-progress" class="progress-bar progress-bar-striped active" role="progressbar" aria-valuenow="60" aria-valuemin="0" aria-valuemax="100" style="width: 60%;">
-						60%
+					<div id="load-progress" class="progress-bar progress-bar-striped" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" style="width: 0%;">
+						0%
 					</div>
 				</div>
 			</div>
-		</div-->
+		</div>
 		
 		<div class="row">
 			<div class="col-lg-12">
@@ -106,6 +106,7 @@ if (window.Worker) {
 	$("#uploadBtn").on("change", function(evt) {
 
 		$result.html("");
+		$("#load-progress").text("0%").attr("aria-valuenow", 0).css("width", "0%");
 		$("#result_block").removeClass("hidden").addClass("show");
 		
 		var fileName = evt.target.files[0];
@@ -116,7 +117,6 @@ if (window.Worker) {
 			return function(e) {
 				
 				// Web Worker
-				
 				var worker = new Worker('./js/worker.js');
 			
 				worker.addEventListener('message', function(e) {
@@ -124,6 +124,11 @@ if (window.Worker) {
 					var msg = e.data;
 					
 					switch(msg.type) {
+						case "progress-update":
+							$("#load-progress").text(msg.data + "%")
+								.attr("aria-valuenow", msg.data)
+								.css("width", msg.data + "%");
+							break;
 						case "slide":
 							$result.append(msg.data);
 							break;

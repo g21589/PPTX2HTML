@@ -3,8 +3,8 @@ importScripts(
 	'./highlight.min.js',
 	'./colz.class.min.js',
 	'./highlight.min.js',
-	'./functions.js',
-	'./tXmlUnfolded.js'
+	'./tXml.min.js',
+	'./functions.js'
 );
 
 onmessage = function(e) {
@@ -42,6 +42,10 @@ onmessage = function(e) {
 			"type": "slide",
 			"data": slideHtml
 		});
+		self.postMessage({
+			"type": "progress-update",
+			"data": (i + 1) * 100 / filesInfo["slides"].length
+		});
 	}
 	
 	var dateAfter = new Date();
@@ -58,7 +62,7 @@ function readXmlFile(zip, filename) {
 
 function getContentTypes(zip) {
 	var ContentTypesJson = readXmlFile(zip, "[Content_Types].xml");
-	var subObj = ContentTypesJson["?xml"]["Types"]["Override"];
+	var subObj = ContentTypesJson["Types"]["Override"];
 	var slidesLocArray = [];
 	var slideLayoutsLocArray = [];
 	for (var i=0; i<subObj.length; i++) {
@@ -81,7 +85,7 @@ function getContentTypes(zip) {
 function getSlideSize(zip) {
 	// Pixel = EMUs * Resolution / 914400;  (Resolution = 96)
 	var content = readXmlFile(zip, "ppt/presentation.xml");
-	var sldSzAttrs = content["?xml"]["p:presentation"]["p:sldSz"]["attrs"]
+	var sldSzAttrs = content["p:presentation"]["p:sldSz"]["attrs"]
 	return {
 		"width": parseInt(sldSzAttrs["cx"]) * 96 / 914400,
 		"height": parseInt(sldSzAttrs["cy"]) * 96 / 914400
@@ -101,7 +105,7 @@ function processSingleSlide(zip, sldFileName, index, slideSize) {
 	// @resName: ppt/slides/_rels/slide1.xml.rels
 	resName = sldFileName.replace("slides/slide", "slides/_rels/slide") + ".rels";
 	var resContent = readXmlFile(zip, resName);
-	var RelationshipArray = resContent["?xml"]["Relationships"]["Relationship"];
+	var RelationshipArray = resContent["Relationships"]["Relationship"];
 	var layoutFilename = "";
 	var slideResObj = {};
 	if (RelationshipArray.constructor === Array) {
@@ -127,10 +131,12 @@ function processSingleSlide(zip, sldFileName, index, slideSize) {
 	
 	// Open slideLayoutXX.xml
 	var slideLayoutContent = readXmlFile(zip, layoutFilename);
+	/*
 	self.postMessage({
 		"type": "INFO",
-		"data": JSON.stringify( layoutFilename )
+		"data": JSON.stringify( slideLayoutContent )
 	});
+	*/
 	
 	// =====< Step 2 >=====
 	// Read slide master filename of the slidelayout (Get slideMasterXX.xml)
@@ -138,7 +144,7 @@ function processSingleSlide(zip, sldFileName, index, slideSize) {
 	// @masterName: ppt/slideLayouts/_rels/slideLayout1.xml.rels
 	var slideLayoutResFilename = layoutFilename.replace("slideLayouts/slideLayout", "slideLayouts/_rels/slideLayout") + ".rels";
 	var slideLayoutResContent = readXmlFile(zip, slideLayoutResFilename);
-	RelationshipArray = slideLayoutResContent["?xml"]["Relationships"]["Relationship"];
+	RelationshipArray = slideLayoutResContent["Relationships"]["Relationship"];
 	var masterFilename = "";
 	if (RelationshipArray.constructor === Array) {
 		for (var i=0; i<RelationshipArray.length; i++) {
@@ -154,14 +160,16 @@ function processSingleSlide(zip, sldFileName, index, slideSize) {
 	}
 	// Open slideMasterXX.xml
 	var slideMasterContent = readXmlFile(zip, masterFilename);
+	/*
 	self.postMessage({
 		"type": "INFO",
-		"data": JSON.stringify( masterFilename )
+		"data": JSON.stringify( slideMasterContent )
 	});
+	*/
 	
 	// =====< Step 3 >=====
 	var content = readXmlFile(zip, sldFileName);
-	var nodes = content["?xml"]["p:sld"]["p:cSld"]["p:spTree"];
+	var nodes = content["p:sld"]["p:cSld"]["p:spTree"];
 	var warpObj = {
 		"zip": zip,
 		"slideLayoutContent": slideLayoutContent,
@@ -543,11 +551,13 @@ function processPicNode(node, warpObj) {
 }
 
 function getPosition(slideSpNode, slideLayoutSpNode, slideMasterSpNode) {
-
+	
+	/*
 	self.postMessage({
 		"type": "DEBUG",
 		"data": JSON.stringify( slideSpNode )
 	});
+	*/
 	
 	if (slideSpNode["p:spPr"]["a:xfrm"] === undefined) {
 		return "";
@@ -574,11 +584,13 @@ function getPosition(slideSpNode, slideLayoutSpNode, slideMasterSpNode) {
 }
 
 function getSize(slideSpNode, slideLayoutSpNode, slideMasterSpNode) {
-
+	
+	/*
 	self.postMessage({
 		"type": "DEBUG",
 		"data": JSON.stringify( slideSpNode )
 	});
+	*/
 	
 	if (slideSpNode["p:spPr"]["a:xfrm"] === undefined) {
 		return "";
