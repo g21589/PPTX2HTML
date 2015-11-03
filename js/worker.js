@@ -276,33 +276,69 @@ function processSpNode(node, warpObj) {
 		"data": {id, name, idx, type}
 	});
 	
+	/*
+	self.postMessage({
+		"type": "DEBUG",
+		"data": JSON.stringify( node )
+	});
+	*/
+	
 	var text = "";
+	
+	text += "<div class='block content " + /*getAlign($node, $slideLayoutSpNode, $slideMasterSpNode, type) +*/
+			"' _id='" + id + "' _idx='" + idx + "' _type='" + type + "' _name='" + name +
+			"' style='" + 
+				getPosition(node, null, null) + 
+				getSize(node, null, null) + 
+				//getBorder($node) +
+				//getFill($node) +
+			"'>";
 	
 	// Text
 	if (node["p:txBody"] === undefined) {
 		return text;
 	}
 	
-	if (node["p:txBody"]["a:p"]["a:r"] === undefined) {
-		// Without "r"
-		if (node["p:txBody"]["a:p"].constructor === Array) {
-			for (var i=0; i<node["p:txBody"]["a:p"].length; i++) {
-				text += "<div><span>" + node["p:txBody"]["a:p"][i]["a:t"] + "</span></div>";
+	var textBodyNode = node["p:txBody"];
+	if (textBodyNode["a:p"].constructor === Array) {
+		// multi p
+		for (var i=0; i<textBodyNode["a:p"].length; i++) {
+			var pNode = textBodyNode["a:p"][i];
+			var rNode = pNode["a:r"];
+			text += "<div>";
+			if (rNode === undefined) {
+				// without r
+				text += "<span>" + pNode["a:t"] + "</span>";
+			} else if (rNode.constructor === Array) {
+				// with multi r
+				for (var j=0; j<rNode.length; j++) {
+					text += "<span>" + rNode[j]["a:t"] + "</span>";
+				}
+			} else {
+				// with one r
+				text += "<span>" + rNode["a:t"] + "</span>";
 			}
-		} else {
-			text += "<div><span>" + node["p:txBody"]["a:p"]["a:t"] + "</span></div>";
+			text += "</div>";
 		}
 	} else {
-		// With "r"
-		if (node["p:txBody"]["a:p"].constructor === Array) {
-			for (var i=0; i<node["p:txBody"]["a:p"].length; i++) {
-				text += "<div><span>" + node["p:txBody"]["a:p"][i]["a:r"]["a:t"] + "</span></div>";
+		// one p
+		var pNode = textBodyNode["a:p"];
+		var rNode = pNode["a:r"];
+		text += "<div>";
+		if (rNode === undefined) {
+			// without r
+			text += "<span>" + pNode["a:t"] + "</span>";
+		} else if (rNode.constructor === Array) {
+			// with multi r
+			for (var j=0; j<rNode.length; j++) {
+				text += "<span>" + rNode[j]["a:t"] + "</span>";
 			}
 		} else {
-			text += "<div><span>" + node["p:txBody"]["a:p"]["a:r"]["a:t"] + "</span></div>";
+			// with one r
+			text += "<span>" + rNode["a:t"] + "</span>";
 		}
+		text += "</div>";
 	}
-	
 	
 /*	
 	var $slideLayoutSpNode = $('');
@@ -466,6 +502,7 @@ function processSpNode(node, warpObj) {
 		text += "</div>";
 	}
 */
+	text += "</div>";
 	return text;
 }
 
@@ -507,6 +544,15 @@ function processPicNode(node, warpObj) {
 
 function getPosition(slideSpNode, slideLayoutSpNode, slideMasterSpNode) {
 
+	self.postMessage({
+		"type": "DEBUG",
+		"data": JSON.stringify( slideSpNode )
+	});
+	
+	if (slideSpNode["p:spPr"]["a:xfrm"] === undefined) {
+		return "";
+	}
+	
 	var off = slideSpNode["p:spPr"]["a:xfrm"]["a:off"]["attrs"];
 	var x = parseInt(off["x"]) * 96 / 914400;
 	var y = parseInt(off["y"]) * 96 / 914400;
@@ -523,12 +569,20 @@ function getPosition(slideSpNode, slideLayoutSpNode, slideMasterSpNode) {
 		x = parseInt(off.attr("x")) * 96 / 914400;
 		y = parseInt(off.attr("y")) * 96 / 914400;
 	}
-	//console.log([x, y]);
 */
 	return (isNaN(x) || isNaN(y)) ? "" : "top:" + y + "px; left:" + x + "px;";
 }
 
 function getSize(slideSpNode, slideLayoutSpNode, slideMasterSpNode) {
+
+	self.postMessage({
+		"type": "DEBUG",
+		"data": JSON.stringify( slideSpNode )
+	});
+	
+	if (slideSpNode["p:spPr"]["a:xfrm"] === undefined) {
+		return "";
+	}
 	
 	var ext = slideSpNode["p:spPr"]["a:xfrm"]["a:ext"]["attrs"];
 	var w = parseInt(ext["cx"]) * 96 / 914400;
@@ -547,7 +601,6 @@ function getSize(slideSpNode, slideLayoutSpNode, slideMasterSpNode) {
 		h = parseInt(ext.attr("cy")) * 96 / 914400;
 		
 	}
-	//console.log([w, h]);
 */	
 	return (isNaN(w) || isNaN(h)) ? "" : "width:" + w + "px; height:" + h + "px;";
 }
