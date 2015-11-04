@@ -134,7 +134,7 @@ function processSingleSlide(zip, sldFileName, index, slideSize) {
 	var slideLayoutTables = indexNodes(slideLayoutContent);
 	
 	self.postMessage({
-		"type": "INFO",
+		"type": "DEBUG",
 		"data": slideLayoutTables
 	});
 	
@@ -164,7 +164,7 @@ function processSingleSlide(zip, sldFileName, index, slideSize) {
 	var slideMasterTables = indexNodes(slideMasterContent);
 	
 	self.postMessage({
-		"type": "INFO",
+		"type": "DEBUG",
 		"data": slideMasterTables
 	});
 	
@@ -174,8 +174,10 @@ function processSingleSlide(zip, sldFileName, index, slideSize) {
 	var nodes = content["p:sld"]["p:cSld"]["p:spTree"];
 	var warpObj = {
 		"zip": zip,
-		"slideLayoutContent": slideLayoutContent,
-		"slideMasterContent": slideMasterContent,
+		//"slideLayoutContent": slideLayoutContent,
+		//"slideMasterContent": slideMasterContent,
+		"slideLayoutTables": slideLayoutTables,
+		"slideMasterTables": slideMasterTables,
 		"slideResObj": slideResObj
 	};
 	
@@ -333,6 +335,17 @@ function processSpNode(node, warpObj) {
 	var idx = (node["p:nvSpPr"]["p:nvPr"]["p:ph"] === undefined) ? undefined : node["p:nvSpPr"]["p:nvPr"]["p:ph"]["attrs"]["idx"];
 	var type = (node["p:nvSpPr"]["p:nvPr"]["p:ph"] === undefined) ? undefined : node["p:nvSpPr"]["p:nvPr"]["p:ph"]["attrs"]["type"];
 	
+	var slideLayoutSpNode = undefined;
+	var slideMasterSpNode = undefined;
+	
+	if (idx === undefined) {
+		slideLayoutSpNode = warpObj["slideLayoutTables"]["idTable"][id];
+		slideMasterSpNode = warpObj["slideMasterTables"]["idTable"][id];
+	} else {
+		var id = warpObj["slideLayoutTables"]["idxTable"][idx]["p:nvSpPr"]["p:cNvPr"]["attrs"]["id"];
+		slideMasterSpNode = warpObj["slideMasterTables"]["idTable"][id];
+	}
+	
 	self.postMessage({
 		"type": "DEBUG",
 		"data": {id, name, idx, type}
@@ -350,8 +363,8 @@ function processSpNode(node, warpObj) {
 	text += "<div class='block content " + /*getAlign($node, $slideLayoutSpNode, $slideMasterSpNode, type) +*/
 			"' _id='" + id + "' _idx='" + idx + "' _type='" + type + "' _name='" + name +
 			"' style='" + 
-				getPosition(node, null, null) + 
-				getSize(node, null, null) + 
+				getPosition(node, slideLayoutSpNode, slideMasterSpNode) + 
+				getSize(node, slideLayoutSpNode, slideMasterSpNode) + 
 				//getBorder($node) +
 				//getFill($node) +
 			"'>";
