@@ -131,12 +131,13 @@ function processSingleSlide(zip, sldFileName, index, slideSize) {
 	
 	// Open slideLayoutXX.xml
 	var slideLayoutContent = readXmlFile(zip, layoutFilename);
-	/*
+	var slideLayoutTables = indexNodes(slideLayoutContent);
+	
 	self.postMessage({
 		"type": "INFO",
-		"data": JSON.stringify( slideLayoutContent )
+		"data": slideLayoutTables
 	});
-	*/
+	
 	
 	// =====< Step 2 >=====
 	// Read slide master filename of the slidelayout (Get slideMasterXX.xml)
@@ -160,12 +161,13 @@ function processSingleSlide(zip, sldFileName, index, slideSize) {
 	}
 	// Open slideMasterXX.xml
 	var slideMasterContent = readXmlFile(zip, masterFilename);
-	/*
+	var slideMasterTables = indexNodes(slideMasterContent);
+	
 	self.postMessage({
 		"type": "INFO",
-		"data": JSON.stringify( slideMasterContent )
+		"data": slideMasterTables
 	});
-	*/
+	
 	
 	// =====< Step 3 >=====
 	var content = readXmlFile(zip, sldFileName);
@@ -190,6 +192,58 @@ function processSingleSlide(zip, sldFileName, index, slideSize) {
 	}
 	
 	return result + "</section></li>";
+}
+
+function indexNodes(content) {
+	
+	var keys = Object.keys(content);
+	var spTreeNode = content[keys[0]]["p:cSld"]["p:spTree"];
+	
+	var idTable = {};
+	var idxTable = {};
+	
+	for (var key in spTreeNode) {
+		/*
+		self.postMessage({
+			"type": "DEBUG",
+			"data": key
+		});
+		*/
+		if (key == "p:nvGrpSpPr" || key == "p:grpSpPr") {
+			continue;
+		}
+		
+		var targetNode = spTreeNode[key];
+		
+		if (targetNode.constructor === Array) {
+			for (var i=0; i<targetNode.length; i++) {
+				var id = (targetNode[i]["p:nvSpPr"]["p:cNvPr"] === undefined) ? undefined : targetNode[i]["p:nvSpPr"]["p:cNvPr"]["attrs"]["id"];
+				var idx = (targetNode[i]["p:nvSpPr"]["p:nvPr"] === undefined || targetNode[i]["p:nvSpPr"]["p:nvPr"]["p:ph"] === undefined) ? 
+					undefined : targetNode[i]["p:nvSpPr"]["p:nvPr"]["p:ph"]["attrs"]["idx"];
+				
+				if (id !== undefined) {
+					idTable[id] = targetNode[i];
+				}
+				if (idx !== undefined) {
+					idxTable[idx] = targetNode[i];
+				}
+			}
+		} else {
+			var id = (targetNode["p:nvSpPr"]["p:cNvPr"] === undefined) ? undefined : targetNode["p:nvSpPr"]["p:cNvPr"]["attrs"]["id"];
+			var idx = (targetNode["p:nvSpPr"]["p:nvPr"] === undefined || targetNode["p:nvSpPr"]["p:nvPr"]["p:ph"] === undefined) ? 
+				undefined : targetNode["p:nvSpPr"]["p:nvPr"]["p:ph"]["attrs"]["idx"];
+			
+			if (id !== undefined) {
+				idTable[id] = targetNode;
+			}
+			if (idx !== undefined) {
+				idxTable[idx] = targetNode;
+			}
+		}
+		
+	}
+	
+	return {idTable, idxTable};
 }
 
 function processNodesInSlide(nodeKey, nodeValue, warpObj) {
