@@ -3,7 +3,7 @@ importScripts(
 	'./highlight.min.js',
 	'./colz.class.min.js',
 	'./highlight.min.js',
-	'./tXml.min.js',
+	'./tXml.js',
 	'./functions.js'
 );
 
@@ -132,12 +132,7 @@ function processSingleSlide(zip, sldFileName, index, slideSize) {
 	// Open slideLayoutXX.xml
 	var slideLayoutContent = readXmlFile(zip, layoutFilename);
 	var slideLayoutTables = indexNodes(slideLayoutContent);
-	
-	self.postMessage({
-		"type": "DEBUG",
-		"data": slideLayoutTables
-	});
-	
+	//debug(slideLayoutTables);
 	
 	// =====< Step 2 >=====
 	// Read slide master filename of the slidelayout (Get slideMasterXX.xml)
@@ -162,11 +157,7 @@ function processSingleSlide(zip, sldFileName, index, slideSize) {
 	// Open slideMasterXX.xml
 	var slideMasterContent = readXmlFile(zip, masterFilename);
 	var slideMasterTables = indexNodes(slideMasterContent);
-	
-	self.postMessage({
-		"type": "DEBUG",
-		"data": slideMasterTables
-	});
+	//debug(slideMasterTables);
 	
 	
 	// =====< Step 3 >=====
@@ -174,8 +165,6 @@ function processSingleSlide(zip, sldFileName, index, slideSize) {
 	var nodes = content["p:sld"]["p:cSld"]["p:spTree"];
 	var warpObj = {
 		"zip": zip,
-		//"slideLayoutContent": slideLayoutContent,
-		//"slideMasterContent": slideMasterContent,
 		"slideLayoutTables": slideLayoutTables,
 		"slideMasterTables": slideMasterTables,
 		"slideResObj": slideResObj
@@ -205,12 +194,7 @@ function indexNodes(content) {
 	var idxTable = {};
 	
 	for (var key in spTreeNode) {
-		/*
-		self.postMessage({
-			"type": "DEBUG",
-			"data": key
-		});
-		*/
+
 		if (key == "p:nvGrpSpPr" || key == "p:grpSpPr") {
 			continue;
 		}
@@ -342,25 +326,16 @@ function processSpNode(node, warpObj) {
 		slideLayoutSpNode = warpObj["slideLayoutTables"]["idTable"][id];
 		slideMasterSpNode = warpObj["slideMasterTables"]["idTable"][id];
 	} else {
-		var id = warpObj["slideLayoutTables"]["idxTable"][idx]["p:nvSpPr"]["p:cNvPr"]["attrs"]["id"];
-		slideMasterSpNode = warpObj["slideMasterTables"]["idTable"][id];
+		var _id = warpObj["slideLayoutTables"]["idxTable"][idx]["p:nvSpPr"]["p:cNvPr"]["attrs"]["id"];
+		slideMasterSpNode = warpObj["slideMasterTables"]["idTable"][_id];
 	}
 	
-	self.postMessage({
-		"type": "DEBUG",
-		"data": {id, name, idx, type}
-	});
-	
-	/*
-	self.postMessage({
-		"type": "DEBUG",
-		"data": JSON.stringify( node )
-	});
-	*/
+	debug( {id, name, idx, type} );
+	//debug( JSON.stringify( node ) );
 	
 	var text = "";
 	
-	text += "<div class='block content " + /*getAlign($node, $slideLayoutSpNode, $slideMasterSpNode, type) +*/
+	text += "<div class='block content " + getAlign(node, slideLayoutSpNode, slideMasterSpNode, null) +
 			"' _id='" + id + "' _idx='" + idx + "' _type='" + type + "' _name='" + name +
 			"' style='" + 
 				getPosition(node, slideLayoutSpNode, slideMasterSpNode) + 
@@ -383,15 +358,15 @@ function processSpNode(node, warpObj) {
 			text += "<div>";
 			if (rNode === undefined) {
 				// without r
-				text += "<span>" + pNode["a:t"] + "</span>";
+				text += genSpanElement(pNode, pNode["a:t"], slideLayoutSpNode, slideMasterSpNode);
 			} else if (rNode.constructor === Array) {
 				// with multi r
 				for (var j=0; j<rNode.length; j++) {
-					text += "<span>" + rNode[j]["a:t"] + "</span>";
+					text += genSpanElement(rNode[j], rNode[j]["a:t"], slideLayoutSpNode, slideMasterSpNode);
 				}
 			} else {
 				// with one r
-				text += "<span>" + rNode["a:t"] + "</span>";
+				text += genSpanElement(rNode, rNode["a:t"], slideLayoutSpNode, slideMasterSpNode);
 			}
 			text += "</div>";
 		}
@@ -402,32 +377,20 @@ function processSpNode(node, warpObj) {
 		text += "<div>";
 		if (rNode === undefined) {
 			// without r
-			text += "<span>" + pNode["a:t"] + "</span>";
+			text += genSpanElement(pNode, pNode["a:t"], slideLayoutSpNode, slideMasterSpNode);
 		} else if (rNode.constructor === Array) {
 			// with multi r
 			for (var j=0; j<rNode.length; j++) {
-				text += "<span>" + rNode[j]["a:t"] + "</span>";
+				text += genSpanElement(rNode[j], rNode[j]["a:t"], slideLayoutSpNode, slideMasterSpNode);
 			}
 		} else {
 			// with one r
-			text += "<span>" + rNode["a:t"] + "</span>";
+			text += genSpanElement(rNode, rNode["a:t"], slideLayoutSpNode, slideMasterSpNode);
 		}
 		text += "</div>";
 	}
 	
-/*	
-	var $slideLayoutSpNode = $('');
-	var $slideMasterSpNode = $('');
-	
-	if (idx === undefined) {
-		$slideLayoutSpNode = getSpNodeByID($slideLayoutXML, id);
-		$slideMasterSpNode = getSpNodeByID($slideMasterXML, id);
-	} else {
-		var id = getSpNodeByIDX($slideLayoutXML, idx).find("cNvPr").attr("id");
-		$slideMasterSpNode = getSpNodeByID($slideMasterXML, id);
-	}
-	
-	
+/*
 	var svgMode = false;
 	if ($node.find("style").length > 0) {
 		svgMode = true;
@@ -583,12 +546,7 @@ function processSpNode(node, warpObj) {
 
 function processPicNode(node, warpObj) {
 	
-	/*
-	self.postMessage({
-		"type": "DEBUG",
-		"data": JSON.stringify( node )
-	});
-	*/
+	//debug( JSON.stringify( node ) );
 	
 	var rid = node["p:blipFill"]["a:blip"]["attrs"]["r:embed"];
 	var imgName = warpObj["slideResObj"][rid]["target"];
@@ -617,69 +575,186 @@ function processPicNode(node, warpObj) {
 			   "'><img src=\"data:" + mimeType + ";base64," + base64ArrayBuffer(imgArrayBuffer) + "\" style='width: 100%; height: 100%'/></div>";
 }
 
+function genSpanElement(node, text, slideLayoutSpNode, slideMasterSpNode) {
+	return "<span style='color: " + getFontColor(node) + 
+				"; font-size: " + getFontSize(node, slideLayoutSpNode, null) + 
+				"; font-family: " + getFontType(node) + 
+				"; font-weight: " + getFontBold(node) + 
+				"; font-style: " + getFontItalic(node) + 
+				"; text-decoration: " + getFontDecoration(node) + 
+				";'>" + text + "</span>";
+}
+
 function getPosition(slideSpNode, slideLayoutSpNode, slideMasterSpNode) {
 	
-	/*
-	self.postMessage({
-		"type": "DEBUG",
-		"data": JSON.stringify( slideSpNode )
-	});
-	*/
+	//debug(JSON.stringify(slideLayoutSpNode));
+	//debug(JSON.stringify(slideMasterSpNode));
 	
-	if (slideSpNode["p:spPr"]["a:xfrm"] === undefined) {
+	var off = undefined;
+	var x = -1, y = -1;
+	
+	if (slideSpNode["p:spPr"]["a:xfrm"] !== undefined) {
+		off = slideSpNode["p:spPr"]["a:xfrm"]["a:off"]["attrs"];
+	} else if (slideLayoutSpNode !== undefined && slideLayoutSpNode["p:spPr"]["a:xfrm"] !== undefined) {
+		off = slideLayoutSpNode["p:spPr"]["a:xfrm"]["a:off"]["attrs"];
+	} else if (slideMasterSpNode !== undefined && slideMasterSpNode["p:spPr"]["a:xfrm"] !== undefined) {
+		off = slideMasterSpNode["p:spPr"]["a:xfrm"]["a:off"]["attrs"];
+	}
+	
+	if (off === undefined) {
 		return "";
+	} else {
+		x = parseInt(off["x"]) * 96 / 914400;
+		y = parseInt(off["y"]) * 96 / 914400;
+		return (isNaN(x) || isNaN(y)) ? "" : "top:" + y + "px; left:" + x + "px;";
 	}
 	
-	var off = slideSpNode["p:spPr"]["a:xfrm"]["a:off"]["attrs"];
-	var x = parseInt(off["x"]) * 96 / 914400;
-	var y = parseInt(off["y"]) * 96 / 914400;
-/*
-	if (isNaN(x) || isNaN(y)) {
-		// Get info from layoutXML
-		off = slideLayoutSpNode.find("off");
-		x = parseInt(off.attr("x")) * 96 / 914400;
-		y = parseInt(off.attr("y")) * 96 / 914400;
-	}
-	if (isNaN(x) || isNaN(y)) {
-		// Get info from masterXML
-		off = slideMasterSpNode.find("off");
-		x = parseInt(off.attr("x")) * 96 / 914400;
-		y = parseInt(off.attr("y")) * 96 / 914400;
-	}
-*/
-	return (isNaN(x) || isNaN(y)) ? "" : "top:" + y + "px; left:" + x + "px;";
 }
 
 function getSize(slideSpNode, slideLayoutSpNode, slideMasterSpNode) {
 	
+	//debug(JSON.stringify(slideLayoutSpNode));
+	//debug(JSON.stringify(slideMasterSpNode));
+	
+	var ext = undefined;
+	var w = -1, h = -1;
+	
+	if (slideSpNode["p:spPr"]["a:xfrm"] !== undefined) {
+		ext = slideSpNode["p:spPr"]["a:xfrm"]["a:ext"]["attrs"];
+	} else if (slideLayoutSpNode !== undefined && slideLayoutSpNode["p:spPr"]["a:xfrm"] !== undefined) {
+		ext = slideLayoutSpNode["p:spPr"]["a:xfrm"]["a:ext"]["attrs"];
+	} else if (slideMasterSpNode !== undefined && slideMasterSpNode["p:spPr"]["a:xfrm"] !== undefined) {
+		ext = slideMasterSpNode["p:spPr"]["a:xfrm"]["a:ext"]["attrs"];
+	}
+	
+	if (ext === undefined) {
+		return "";
+	} else {
+		w = parseInt(ext["cx"]) * 96 / 914400;
+		h = parseInt(ext["cy"]) * 96 / 914400;
+		return (isNaN(w) || isNaN(h)) ? "" : "width:" + w + "px; height:" + h + "px;";
+	}	
+	
+}
+
+function getAlign(node, slideLayoutSpNode, slideMasterSpNode, type) {
+	
+	// 上中下對齊: X, <a:bodyPr anchor="ctr">, <a:bodyPr anchor="b">
+	var anchor = (node["p:txBody"] === undefined || node["p:txBody"]["a:bodyPr"]["attrs"] === undefined) ? "" : node["p:txBody"]["a:bodyPr"]["attrs"]["anchor"];
+	if (anchor === undefined && 
+		slideLayoutSpNode !== undefined &&
+		slideLayoutSpNode["p:txBody"] !== undefined &&
+		slideLayoutSpNode["p:txBody"]["a:bodyPr"]["attrs"] !== undefined) {
+		anchor = slideLayoutSpNode["p:txBody"]["a:bodyPr"]["attrs"]["anchor"];
+	}
+	if (anchor === undefined &&
+		slideMasterSpNode !== undefined && 
+		slideMasterSpNode["p:txBody"] !== undefined &&
+		slideMasterSpNode["p:txBody"]["a:bodyPr"]["attrs"] !== undefined) {
+		anchor = slideMasterSpNode["p:txBody"]["a:bodyPr"]["attrs"]["anchor"];
+	}
+	
+	// 左中右對齊: X, <a:pPr algn="ctr"/>, <a:pPr algn="r"/>
+	// TODO: in p r
+	var algn = "ctr";
 	/*
-	self.postMessage({
-		"type": "DEBUG",
-		"data": JSON.stringify( slideSpNode )
-	});
+	var algn = node.find("pPr").attr("algn");
+	if (algn === undefined) {
+		algn = slideLayoutSpNode.find("pPr").attr("algn");
+	}
+	if (algn === undefined) {
+		algn = slideMasterSpNode.find("pPr").attr("algn");
+		if (algn === undefined) {
+			algn = slideMasterSpNode.find("lvl1pPr").attr("algn");
+		}
+	}
 	*/
 	
-	if (slideSpNode["p:spPr"]["a:xfrm"] === undefined) {
-		return "";
+	/*
+	if (type == "title" || type == "subTitle" || type == "ctrTitle") {
+		return "center-center";
 	}
+	*/
 	
-	var ext = slideSpNode["p:spPr"]["a:xfrm"]["a:ext"]["attrs"];
-	var w = parseInt(ext["cx"]) * 96 / 914400;
-	var h = parseInt(ext["cy"]) * 96 / 914400;
-/*
-	if (isNaN(w) || isNaN(h)) {
-		// Get info from layoutXML
-		ext = slideLayoutSpNode.find("ext");
-		w = parseInt(ext.attr("cx")) * 96 / 914400;
-		h = parseInt(ext.attr("cy")) * 96 / 914400;
+	if (anchor === "ctr") {
+		if (algn === "ctr") {
+			return "center-center";
+		} else if (algn === "r") {
+			return "center-right";
+		} else {
+			return "center-left";
+		}
+	} else if (anchor === "b") {
+		if (algn === "ctr") {
+			return "down-center";
+		} else if (algn === "r") {
+			return "down-right";
+		} else {
+			return "down-left";
+		}
+	} else {
+		if (algn === "ctr") {
+			return "up-center";
+		} else if (algn === "r") {
+			return "up-right";
+		} else {
+			return "up-left";
+		}
 	}
-	if (isNaN(w) || isNaN(h)) {
-		// Get info from masterXML
-		ext = slideMasterSpNode.find("ext");
-		w = parseInt(ext.attr("cx")) * 96 / 914400;
-		h = parseInt(ext.attr("cy")) * 96 / 914400;
-		
+
+}
+
+function getFontType(node) {
+	return (node["a:rPr"] !== undefined && node["a:rPr"]["a:latin"] !== undefined) ? 
+				node["a:rPr"]["a:latin"]["attrs"]["typeface"] : "inherit";
+}
+
+function getFontColor(node) {
+	var color = undefined;
+	if (node["a:rPr"] !== undefined && node["a:rPr"]["a:solidFill"] !== undefined && node["a:rPr"]["a:solidFill"]["a:srgbClr"] !== undefined) {
+		color = node["a:rPr"]["a:solidFill"]["a:srgbClr"]["attrs"]["val"];
 	}
-*/	
-	return (isNaN(w) || isNaN(h)) ? "" : "width:" + w + "px; height:" + h + "px;";
+	if (color === undefined) {
+		color = "#" + color;
+	} else {
+		color = "#000";
+	}
+	return color;
+}
+
+
+function getFontSize(node, slideLayoutSpNode, type) {
+	var fontSize = undefined;
+	if (node["a:rPr"] !== undefined) {
+		fontSize = parseInt(node["a:rPr"]["attrs"]["sz"]) / 100;
+	}
+	if (isNaN(fontSize) && slideLayoutSpNode !== undefined && slideLayoutSpNode["a:defRPr"] !== undefined) {
+		fontSize = parseInt(slideLayoutSpNode["a:defRPr"]["attrs"]["sz"]) / 100;
+	}
+	/*
+	if (isNaN(fontSize)) {
+		if (type == "title" || type == "subTitle" || type == "ctrTitle") {
+			fontSize = titleFontSize;
+		} else {
+			fontSize = otherFontSize;
+		}
+	}
+	*/
+	return isNaN(fontSize) ? "inherit" : (fontSize + "pt");
+}
+
+function getFontBold(node) {
+	return (node["a:rPr"] !== undefined && node["a:rPr"]["attrs"]["b"] === "1") ? "bold" : "initial";
+}
+
+function getFontItalic(node) {
+	return (node["a:rPr"] !== undefined && node["a:rPr"]["attrs"]["i"] === "1") ? "italic" : "normal";
+}
+
+function getFontDecoration(node) {
+	return (node["a:rPr"] !== undefined && node["a:rPr"]["attrs"]["u"] === "sng") ? "underline" : "initial";
+}
+
+function debug(data) {
+	self.postMessage({"type": "DEBUG", "data": data});
 }
