@@ -292,20 +292,18 @@ function processNodesInSlide(nodeKey, nodeValue, warpObj) {
 			//$node.find("cNvPr").attr("id");
 			break;
 		case "p:grpSpPr":
-			// size
-			/*
-			var $xfrmNode = $node.find("xfrm");
-			var x = parseInt($xfrmNode.find("off").attr("x")) * 96 / 914400;
-			var y = parseInt($xfrmNode.find("off").attr("y")) * 96 / 914400;
-			var chx = parseInt($xfrmNode.find("chOff").attr("x")) * 96 / 914400;
-			var chy = parseInt($xfrmNode.find("chOff").attr("y")) * 96 / 914400;
-			var cx = parseInt($xfrmNode.find("ext").attr("cx")) * 96 / 914400;
-			var cy = parseInt($xfrmNode.find("ext").attr("cy")) * 96 / 914400;
-			var chcx = parseInt($xfrmNode.find("chExt").attr("cx")) * 96 / 914400;
-			var chcy = parseInt($xfrmNode.find("chExt").attr("cy")) * 96 / 914400;
+			// size		
+			var xfrmNode = nodeValue["a:xfrm"];
+			var x = parseInt(xfrmNode["a:off"]["attrs"]["x"]) * 96 / 914400;
+			var y = parseInt(xfrmNode["a:off"]["attrs"]["y"]) * 96 / 914400;
+			var chx = parseInt(xfrmNode["a:chOff"]["attrs"]["x"]) * 96 / 914400;
+			var chy = parseInt(xfrmNode["a:chOff"]["attrs"]["y"]) * 96 / 914400;
+			var cx = parseInt(xfrmNode["a:ext"]["attrs"]["cx"]) * 96 / 914400;
+			var cy = parseInt(xfrmNode["a:ext"]["attrs"]["cy"]) * 96 / 914400;
+			var chcx = parseInt(xfrmNode["a:chExt"]["attrs"]["cx"]) * 96 / 914400;
+			var chcy = parseInt(xfrmNode["a:chExt"]["attrs"]["cy"]) * 96 / 914400;
 			result = result.replace(new RegExp('>$'), " style='top: " + (y - chy) + "px; left: " + (x - chx) + 
 						"px; width: " + cx + "px; height: " + cy + "px;'>");
-			*/
 			break;
 		default:
 	}
@@ -342,8 +340,8 @@ function processSpNode(node, warpObj) {
 			"' style='" + 
 				getPosition(node, slideLayoutSpNode, slideMasterSpNode) + 
 				getSize(node, slideLayoutSpNode, slideMasterSpNode) + 
-				//getBorder($node) +
-				//getFill($node) +
+				getBorder(node) +
+				//getFill(node) +
 			"'>";
 	
 	// Text
@@ -750,6 +748,102 @@ function getFontItalic(node) {
 
 function getFontDecoration(node) {
 	return (node["a:rPr"] !== undefined && node["a:rPr"]["attrs"]["u"] === "sng") ? "underline" : "initial";
+}
+
+function getBorder(node) {
+	
+	//debug(JSON.stringify(node));
+	
+	var cssText = "border: ";
+	
+	// 1. presentationML
+	var lineNode = node["p:spPr"]["a:ln"];
+	
+	// border width: 1pt = 12700, default = 0.75pt
+	var borderWidth = parseInt(getTextByPathList(lineNode, ["attrs", "w"])) / 12700;
+	if (isNaN(borderWidth)) {
+		cssText += "0.75pt ";
+	} else {
+		cssText += borderWidth + "pt ";
+	}
+	
+	// border color
+	//var borderColor = $lineNode.find("solidFill").find("srgbClr").attr("val");
+	//if (borderColor === undefined) {
+	//	borderColor = "000";
+	//}
+	var borderColor = "000";
+	cssText += "#" + borderColor + " ";
+	
+	// 2. drawingML namespace
+	//$lineNode = $node.find("style").find("lnRef");
+	
+	var borderType = lineNode["a:prstDash"]["attrs"]["val"];
+	switch (borderType) {
+	case "solid":
+		cssText += "solid";
+		break;
+	case "dash":
+		cssText += "dashed";
+		break;
+	case "dashDot":
+		cssText += "dashed";
+		break;
+	case "dot":
+		cssText += "dotted";
+		break;
+	case "lgDash":
+		cssText += "dashed";
+		break;
+	case "lgDashDotDot":
+		cssText += "dashed";
+		break;
+	case "sysDash":
+		cssText += "dashed";
+		break;
+	case "sysDashDot":
+		cssText += "dashed";
+		break;
+	case "sysDashDotDot":
+		cssText += "dashed";
+		break;
+	case "sysDot":
+		cssText += "dotted";
+		break;
+	case undefined:
+		console.log(borderType);
+	default:
+		console.warn(borderType);
+		//cssText += "#000 solid";
+	}
+	
+	return cssText + ";";
+}
+
+function getFill(node) {
+	
+	/*
+	// 1. presentationML
+	// From slide
+	var fillColor = $node.children("spPr").children("solidFill").find("srgbClr").attr("val");
+	
+	// From theme
+	if (fillColor === undefined) {
+		fillColor = $themeXML.find($node.find("spPr").find("solidFill").find("schemeClr").attr("val")).find("srgbClr").attr("val");
+		// TODO: 較淺, 較深 80%
+	}
+	
+	// 2. drawingML namespace
+	if (fillColor === undefined) {
+		fillColor = $themeXML.find($node.find("style").find("fillRef").find("schemeClr").attr("val")).find("srgbClr").attr("val");
+	}
+	
+	if (fillColor !== undefined) {
+		return "background-color: #" + fillColor + ";";
+	} else {
+		return "";
+	}
+	*/
 }
 
 function getTextByPathStr(node, pathStr) {

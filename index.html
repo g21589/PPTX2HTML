@@ -125,9 +125,9 @@ if (window.Worker) {
 					
 					switch(msg.type) {
 						case "progress-update":
-							$("#load-progress").text(msg.data + "%")
-								.attr("aria-valuenow", msg.data)
-								.css("width", msg.data + "%");
+							$("#load-progress").text(msg.data.toFixed(2) + "%")
+								.attr("aria-valuenow", msg.data.toFixed(2))
+								.css("width", msg.data.toFixed(2) + "%");
 							break;
 						case "slide":
 							$result.append(msg.data);
