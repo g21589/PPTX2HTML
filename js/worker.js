@@ -358,15 +358,15 @@ function processSpNode(node, warpObj) {
 			text += "<div>";
 			if (rNode === undefined) {
 				// without r
-				text += genSpanElement(pNode, pNode["a:t"], slideLayoutSpNode, slideMasterSpNode);
+				text += genSpanElement(pNode, slideLayoutSpNode, slideMasterSpNode);
 			} else if (rNode.constructor === Array) {
 				// with multi r
 				for (var j=0; j<rNode.length; j++) {
-					text += genSpanElement(rNode[j], rNode[j]["a:t"], slideLayoutSpNode, slideMasterSpNode);
+					text += genSpanElement(rNode[j], slideLayoutSpNode, slideMasterSpNode);
 				}
 			} else {
 				// with one r
-				text += genSpanElement(rNode, rNode["a:t"], slideLayoutSpNode, slideMasterSpNode);
+				text += genSpanElement(rNode, slideLayoutSpNode, slideMasterSpNode);
 			}
 			text += "</div>";
 		}
@@ -377,15 +377,15 @@ function processSpNode(node, warpObj) {
 		text += "<div>";
 		if (rNode === undefined) {
 			// without r
-			text += genSpanElement(pNode, pNode["a:t"], slideLayoutSpNode, slideMasterSpNode);
+			text += genSpanElement(pNode, slideLayoutSpNode, slideMasterSpNode);
 		} else if (rNode.constructor === Array) {
 			// with multi r
 			for (var j=0; j<rNode.length; j++) {
-				text += genSpanElement(rNode[j], rNode[j]["a:t"], slideLayoutSpNode, slideMasterSpNode);
+				text += genSpanElement(rNode[j], slideLayoutSpNode, slideMasterSpNode);
 			}
 		} else {
 			// with one r
-			text += genSpanElement(rNode, rNode["a:t"], slideLayoutSpNode, slideMasterSpNode);
+			text += genSpanElement(rNode, slideLayoutSpNode, slideMasterSpNode);
 		}
 		text += "</div>";
 	}
@@ -575,7 +575,17 @@ function processPicNode(node, warpObj) {
 			   "'><img src=\"data:" + mimeType + ";base64," + base64ArrayBuffer(imgArrayBuffer) + "\" style='width: 100%; height: 100%'/></div>";
 }
 
-function genSpanElement(node, text, slideLayoutSpNode, slideMasterSpNode) {
+function genSpanElement(node, slideLayoutSpNode, slideMasterSpNode) {
+	
+	var text = node["a:t"];
+	if (typeof text !== 'string') {
+		text = getTextByPathList(node, ["a:fld", "a:t"]);
+		if (typeof text !== 'string') {
+			text = " ";
+			//debug("XXX: " + JSON.stringify(node));
+		}
+	}
+	
 	return "<span style='color: " + getFontColor(node) + 
 				"; font-size: " + getFontSize(node, slideLayoutSpNode, null) + 
 				"; font-family: " + getFontType(node) + 
@@ -705,23 +715,14 @@ function getAlign(node, slideLayoutSpNode, slideMasterSpNode, type) {
 }
 
 function getFontType(node) {
-	return (node["a:rPr"] !== undefined && node["a:rPr"]["a:latin"] !== undefined) ? 
-				node["a:rPr"]["a:latin"]["attrs"]["typeface"] : "inherit";
+	var typeface = getTextByPathList(node, ["a:rPr", "a:latin", "attrs", "typeface"]);
+	return (typeface === undefined) ? "inherit" : typeface;
 }
 
 function getFontColor(node) {
-	var color = undefined;
-	if (node["a:rPr"] !== undefined && node["a:rPr"]["a:solidFill"] !== undefined && node["a:rPr"]["a:solidFill"]["a:srgbClr"] !== undefined) {
-		color = node["a:rPr"]["a:solidFill"]["a:srgbClr"]["attrs"]["val"];
-	}
-	if (color === undefined) {
-		color = "#" + color;
-	} else {
-		color = "#000";
-	}
-	return color;
+	var color = getTextByPathStr(node, "a:rPr a:solidFill a:srgbClr attrs val");
+	return (color === undefined) ? "#000" : "#" + color;
 }
-
 
 function getFontSize(node, slideLayoutSpNode, type) {
 	var fontSize = undefined;
@@ -753,6 +754,23 @@ function getFontItalic(node) {
 
 function getFontDecoration(node) {
 	return (node["a:rPr"] !== undefined && node["a:rPr"]["attrs"]["u"] === "sng") ? "underline" : "initial";
+}
+
+function getTextByPathStr(node, pathStr) {
+	return getTextByPathList(node, pathStr.trim().split(/\s+/));
+}
+
+function getTextByPathList(node, path) {
+	if (path.constructor !== Array) {
+		throw Error("Error of path type! path is not array.");
+	}
+	if (node === undefined || path.length <= 0) {
+		return undefined;
+	} else if (path.length == 1) {
+		return node[path[0]];
+	} else {
+		return getTextByPathList(node[path[0]], path.slice(1));
+	}
 }
 
 function debug(data) {
