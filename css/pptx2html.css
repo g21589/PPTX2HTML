@@ -37,6 +37,29 @@ section div.content {
 	*/
 }
 
+section div.v-up {
+	justify-content: flex-start;
+}
+section div.v-mid {
+	justify-content: center;
+}
+section div.v-down {
+	justify-content: flex-end;
+}
+
+section div.h-left {
+	align-items: flex-start;
+	text-align: left;
+}
+section div.h-mid {
+	align-items: center;
+	text-align: center;
+}
+section div.h-right {
+	align-items: flex-end;
+	text-align: right;
+}
+
 section div.up-left {
 	justify-content: flex-start;
 	align-items: flex-start;

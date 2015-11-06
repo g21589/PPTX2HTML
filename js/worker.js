@@ -98,7 +98,7 @@ function processSingleSlide(zip, sldFileName, index, slideSize) {
 	
 	self.postMessage({
 		"type": "INFO",
-		"data": "Processing slide" + index
+		"data": "Processing slide" + (index + 1)
 	});
 	
 	// =====< Step 1 >=====
@@ -177,10 +177,10 @@ function processSingleSlide(zip, sldFileName, index, slideSize) {
 	for (var nodeKey in nodes) {
 		if (nodes[nodeKey].constructor === Array) {
 			for (var i=0; i<nodes[nodeKey].length; i++) {
-				result += processNodesInSlide(nodeKey, nodes[nodeKey][i], warpObj);
+				result += processNodesInSlide(nodeKey, nodes[nodeKey][i], warpObj, 0);
 			}
 		} else {
-			result += processNodesInSlide(nodeKey, nodes[nodeKey], warpObj);
+			result += processNodesInSlide(nodeKey, nodes[nodeKey], warpObj, 0);
 		}
 	}
 	
@@ -234,7 +234,7 @@ function indexNodes(content) {
 	return {idTable, idxTable};
 }
 
-function processNodesInSlide(nodeKey, nodeValue, warpObj) {
+function processNodesInSlide(nodeKey, nodeValue, warpObj, depth) {
 	
 	var result = "";
 	
@@ -275,14 +275,14 @@ function processNodesInSlide(nodeKey, nodeValue, warpObj) {
 			*/
 			break;
 		case "p:grpSp":	// 群組
-			result += "<div class='block group'>";			
+			result += "<div class='block group'";			
 			for (var nodeKey in nodeValue) {
 				if (nodeValue[nodeKey].constructor === Array) {
 					for (var i=0; i<nodeValue[nodeKey].length; i++) {
-						result += processNodesInSlide(nodeKey, nodeValue[nodeKey][i], warpObj);
+						result += processNodesInSlide(nodeKey, nodeValue[nodeKey][i], warpObj, depth + 1);
 					}
 				} else {
-					result += processNodesInSlide(nodeKey, nodeValue[nodeKey], warpObj);
+					result += processNodesInSlide(nodeKey, nodeValue[nodeKey], warpObj, depth + 1);
 				}
 			}
 			result += "</div>";
@@ -292,18 +292,19 @@ function processNodesInSlide(nodeKey, nodeValue, warpObj) {
 			//$node.find("cNvPr").attr("id");
 			break;
 		case "p:grpSpPr":
-			// size		
-			var xfrmNode = nodeValue["a:xfrm"];
-			var x = parseInt(xfrmNode["a:off"]["attrs"]["x"]) * 96 / 914400;
-			var y = parseInt(xfrmNode["a:off"]["attrs"]["y"]) * 96 / 914400;
-			var chx = parseInt(xfrmNode["a:chOff"]["attrs"]["x"]) * 96 / 914400;
-			var chy = parseInt(xfrmNode["a:chOff"]["attrs"]["y"]) * 96 / 914400;
-			var cx = parseInt(xfrmNode["a:ext"]["attrs"]["cx"]) * 96 / 914400;
-			var cy = parseInt(xfrmNode["a:ext"]["attrs"]["cy"]) * 96 / 914400;
-			var chcx = parseInt(xfrmNode["a:chExt"]["attrs"]["cx"]) * 96 / 914400;
-			var chcy = parseInt(xfrmNode["a:chExt"]["attrs"]["cy"]) * 96 / 914400;
-			result = result.replace(new RegExp('>$'), " style='top: " + (y - chy) + "px; left: " + (x - chx) + 
-						"px; width: " + cx + "px; height: " + cy + "px;'>");
+			// size
+			if (depth > 0) {
+				var xfrmNode = nodeValue["a:xfrm"];
+				var x = parseInt(xfrmNode["a:off"]["attrs"]["x"]) * 96 / 914400;
+				var y = parseInt(xfrmNode["a:off"]["attrs"]["y"]) * 96 / 914400;
+				var chx = parseInt(xfrmNode["a:chOff"]["attrs"]["x"]) * 96 / 914400;
+				var chy = parseInt(xfrmNode["a:chOff"]["attrs"]["y"]) * 96 / 914400;
+				var cx = parseInt(xfrmNode["a:ext"]["attrs"]["cx"]) * 96 / 914400;
+				var cy = parseInt(xfrmNode["a:ext"]["attrs"]["cy"]) * 96 / 914400;
+				var chcx = parseInt(xfrmNode["a:chExt"]["attrs"]["cx"]) * 96 / 914400;
+				var chcy = parseInt(xfrmNode["a:chExt"]["attrs"]["cy"]) * 96 / 914400;
+				result = " style='top: " + (y - chy) + "px; left: " + (x - chx) + "px; width: " + cx + "px; height: " + cy + "px;'>";
+			}
 			break;
 		default:
 	}
@@ -335,7 +336,7 @@ function processSpNode(node, warpObj) {
 	
 	var text = "";
 	
-	text += "<div class='block content " + getAlign(node, slideLayoutSpNode, slideMasterSpNode, type) +
+	text += "<div class='block content " + getVerticalAlign(node, slideLayoutSpNode, slideMasterSpNode, type) +
 			"' _id='" + id + "' _idx='" + idx + "' _type='" + type + "' _name='" + name +
 			"' style='" + 
 				getPosition(node, slideLayoutSpNode, slideMasterSpNode) + 
@@ -355,7 +356,7 @@ function processSpNode(node, warpObj) {
 		for (var i=0; i<textBodyNode["a:p"].length; i++) {
 			var pNode = textBodyNode["a:p"][i];
 			var rNode = pNode["a:r"];
-			text += "<div>";
+			text += "<div class='" + getHorizontalAlign(pNode, slideLayoutSpNode, slideMasterSpNode, type) + "'>";
 			if (rNode === undefined) {
 				// without r
 				text += genSpanElement(pNode, slideLayoutSpNode, slideMasterSpNode);
@@ -374,7 +375,7 @@ function processSpNode(node, warpObj) {
 		// one p
 		var pNode = textBodyNode["a:p"];
 		var rNode = pNode["a:r"];
-		text += "<div>";
+		text += "<div class='" + getHorizontalAlign(pNode, slideLayoutSpNode, slideMasterSpNode, type) + "'>";
 		if (rNode === undefined) {
 			// without r
 			text += genSpanElement(pNode, slideLayoutSpNode, slideMasterSpNode);
@@ -647,6 +648,36 @@ function getSize(slideSpNode, slideLayoutSpNode, slideMasterSpNode) {
 	
 }
 
+function getHorizontalAlign(node, slideLayoutSpNode, slideMasterSpNode, type) {
+	//debug(node);
+	var algn = getTextByPathList(node, ["a:pPr", "attrs", "algn"]);
+	if (algn === undefined) {
+		algn = getTextByPathList(slideLayoutSpNode, ["p:txBody", "a:p", "a:pPr", "attrs", "algn"]);
+		if (algn === undefined) {
+			algn = getTextByPathList(slideMasterSpNode, ["p:txBody", "a:p", "a:pPr", "attrs", "algn"]);
+		}
+	}
+	// TODO:
+	if (algn === undefined && (type == "title" || type == "subTitle" || type == "ctrTitle")) {
+		return "h-mid";
+	}
+	return algn === "ctr" ? "h-mid" : algn === "r" ? "h-right" : "h-left";
+}
+
+function getVerticalAlign(node, slideLayoutSpNode, slideMasterSpNode, type) {
+	
+	// 上中下對齊: X, <a:bodyPr anchor="ctr">, <a:bodyPr anchor="b">
+	var anchor = getTextByPathList(node, ["p:txBody", "a:bodyPr", "attrs", "anchor"]);
+	if (anchor === undefined) {
+		anchor = getTextByPathList(slideLayoutSpNode, ["p:txBody", "a:bodyPr", "attrs", "anchor"]);
+		if (anchor === undefined) {
+			anchor = getTextByPathList(slideMasterSpNode, ["p:txBody", "a:bodyPr", "attrs", "anchor"]);
+		}
+	}
+	
+	return anchor === "ctr" ? "v-mid" : anchor === "b" ?  "v-down" : "v-mid";
+}
+
 function getAlign(node, slideLayoutSpNode, slideMasterSpNode, type) {
 	
 	// 上中下對齊: X, <a:bodyPr anchor="ctr">, <a:bodyPr anchor="b">
@@ -778,43 +809,43 @@ function getBorder(node) {
 	// 2. drawingML namespace
 	//$lineNode = $node.find("style").find("lnRef");
 	
-	var borderType = lineNode["a:prstDash"]["attrs"]["val"];
+	var borderType = getTextByPathList(lineNode, ["a:prstDash", "attrs", "val"]);
 	switch (borderType) {
-	case "solid":
-		cssText += "solid";
-		break;
-	case "dash":
-		cssText += "dashed";
-		break;
-	case "dashDot":
-		cssText += "dashed";
-		break;
-	case "dot":
-		cssText += "dotted";
-		break;
-	case "lgDash":
-		cssText += "dashed";
-		break;
-	case "lgDashDotDot":
-		cssText += "dashed";
-		break;
-	case "sysDash":
-		cssText += "dashed";
-		break;
-	case "sysDashDot":
-		cssText += "dashed";
-		break;
-	case "sysDashDotDot":
-		cssText += "dashed";
-		break;
-	case "sysDot":
-		cssText += "dotted";
-		break;
-	case undefined:
-		console.log(borderType);
-	default:
-		console.warn(borderType);
-		//cssText += "#000 solid";
+		case "solid":
+			cssText += "solid";
+			break;
+		case "dash":
+			cssText += "dashed";
+			break;
+		case "dashDot":
+			cssText += "dashed";
+			break;
+		case "dot":
+			cssText += "dotted";
+			break;
+		case "lgDash":
+			cssText += "dashed";
+			break;
+		case "lgDashDotDot":
+			cssText += "dashed";
+			break;
+		case "sysDash":
+			cssText += "dashed";
+			break;
+		case "sysDashDot":
+			cssText += "dashed";
+			break;
+		case "sysDashDotDot":
+			cssText += "dashed";
+			break;
+		case "sysDot":
+			cssText += "dotted";
+			break;
+		case undefined:
+			//console.log(borderType);
+		default:
+			//console.warn(borderType);
+			//cssText += "#000 solid";
 	}
 	
 	return cssText + ";";
