@@ -1,3 +1,5 @@
+"use strict";
+
 importScripts(
 	'./jszip.min.js',
 	'./highlight.min.js',
@@ -103,7 +105,7 @@ function processSingleSlide(zip, sldFileName, index, slideSize) {
 	// Read relationship filename of the slide (Get slideLayoutXX.xml)
 	// @sldFileName: ppt/slides/slide1.xml
 	// @resName: ppt/slides/_rels/slide1.xml.rels
-	resName = sldFileName.replace("slides/slide", "slides/_rels/slide") + ".rels";
+	var resName = sldFileName.replace("slides/slide", "slides/_rels/slide") + ".rels";
 	var resContent = readXmlFile(zip, resName);
 	var RelationshipArray = resContent["Relationships"]["Relationship"];
 	var layoutFilename = "";
@@ -335,7 +337,7 @@ function processSpNode(node, warpObj) {
 	
 	var text = "";
 	
-	text += "<div class='block content " + getAlign(node, slideLayoutSpNode, slideMasterSpNode, null) +
+	text += "<div class='block content " + getAlign(node, slideLayoutSpNode, slideMasterSpNode, type) +
 			"' _id='" + id + "' _idx='" + idx + "' _type='" + type + "' _name='" + name +
 			"' style='" + 
 				getPosition(node, slideLayoutSpNode, slideMasterSpNode) + 
@@ -650,18 +652,12 @@ function getSize(slideSpNode, slideLayoutSpNode, slideMasterSpNode) {
 function getAlign(node, slideLayoutSpNode, slideMasterSpNode, type) {
 	
 	// 上中下對齊: X, <a:bodyPr anchor="ctr">, <a:bodyPr anchor="b">
-	var anchor = (node["p:txBody"] === undefined || node["p:txBody"]["a:bodyPr"]["attrs"] === undefined) ? "" : node["p:txBody"]["a:bodyPr"]["attrs"]["anchor"];
-	if (anchor === undefined && 
-		slideLayoutSpNode !== undefined &&
-		slideLayoutSpNode["p:txBody"] !== undefined &&
-		slideLayoutSpNode["p:txBody"]["a:bodyPr"]["attrs"] !== undefined) {
-		anchor = slideLayoutSpNode["p:txBody"]["a:bodyPr"]["attrs"]["anchor"];
-	}
-	if (anchor === undefined &&
-		slideMasterSpNode !== undefined && 
-		slideMasterSpNode["p:txBody"] !== undefined &&
-		slideMasterSpNode["p:txBody"]["a:bodyPr"]["attrs"] !== undefined) {
-		anchor = slideMasterSpNode["p:txBody"]["a:bodyPr"]["attrs"]["anchor"];
+	var anchor = getTextByPathList(node, ["p:txBody", "a:bodyPr", "attrs", "anchor"]);
+	if (anchor === undefined) {
+		anchor = getTextByPathList(slideLayoutSpNode, ["p:txBody", "a:bodyPr", "attrs", "anchor"]);
+		if (anchor === undefined) {
+			anchor = getTextByPathList(slideMasterSpNode, ["p:txBody", "a:bodyPr", "attrs", "anchor"]);
+		}
 	}
 	
 	// 左中右對齊: X, <a:pPr algn="ctr"/>, <a:pPr algn="r"/>
@@ -680,11 +676,11 @@ function getAlign(node, slideLayoutSpNode, slideMasterSpNode, type) {
 	}
 	*/
 	
-	/*
 	if (type == "title" || type == "subTitle" || type == "ctrTitle") {
-		return "center-center";
+		algn = "ctr";
+	} else {
+		algn = "left";
 	}
-	*/
 	
 	if (anchor === "ctr") {
 		if (algn === "ctr") {
