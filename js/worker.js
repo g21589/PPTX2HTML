@@ -9,6 +9,8 @@ importScripts(
 	'./functions.js'
 );
 
+var themeContent = null;
+
 onmessage = function(e) {
 	
 	var dateBefore = new Date();
@@ -22,20 +24,8 @@ onmessage = function(e) {
 	});
 	
 	var filesInfo = getContentTypes(zip);
-	/*
-	self.postMessage({
-		"type": "INFO",
-		"data": JSON.stringify( filesInfo )
-	});
-	*/
-	
 	var slideSize = getSlideSize(zip);
-	/*
-	self.postMessage({
-		"type": "INFO",
-		"data": JSON.stringify( slideSize )
-	});
-	*/
+	themeContent = loadTheme(zip);
 	
 	for (var i=0; i<filesInfo["slides"].length; i++) {
 		var filename = filesInfo["slides"][i];
@@ -92,6 +82,28 @@ function getSlideSize(zip) {
 		"width": parseInt(sldSzAttrs["cx"]) * 96 / 914400,
 		"height": parseInt(sldSzAttrs["cy"]) * 96 / 914400
 	};
+}
+
+function loadTheme(zip) {
+	var preResContent = readXmlFile(zip, "ppt/_rels/presentation.xml.rels");
+	var relationshipArray = preResContent["Relationships"]["Relationship"];
+	var themeURI = undefined;
+	if (relationshipArray.constructor === Array) {
+		for (var i=0; i<relationshipArray.length; i++) {
+			if (relationshipArray[i]["attrs"]["Type"] === "http://schemas.openxmlformats.org/officeDocument/2006/relationships/theme") {
+				themeURI = relationshipArray[i]["attrs"]["Target"];
+				break;
+			}
+		}
+	} else if (relationshipArray["attrs"]["Type"] === "http://schemas.openxmlformats.org/officeDocument/2006/relationships/theme") {
+		themeURI = relationshipArray["attrs"]["Target"];
+	}
+	
+	if (themeURI === undefined) {
+		throw Error("Can't open theme file.");
+	}
+	
+	return readXmlFile(zip, "ppt/" + themeURI);
 }
 
 function processSingleSlide(zip, sldFileName, index, slideSize) {
@@ -205,9 +217,8 @@ function indexNodes(content) {
 		
 		if (targetNode.constructor === Array) {
 			for (var i=0; i<targetNode.length; i++) {
-				var id = (targetNode[i]["p:nvSpPr"]["p:cNvPr"] === undefined) ? undefined : targetNode[i]["p:nvSpPr"]["p:cNvPr"]["attrs"]["id"];
-				var idx = (targetNode[i]["p:nvSpPr"]["p:nvPr"] === undefined || targetNode[i]["p:nvSpPr"]["p:nvPr"]["p:ph"] === undefined) ? 
-					undefined : targetNode[i]["p:nvSpPr"]["p:nvPr"]["p:ph"]["attrs"]["idx"];
+				var id = getTextByPathList(targetNode[i], ["p:nvSpPr", "p:cNvPr", "attrs", "id"]);
+				var idx = getTextByPathList(targetNode[i], ["p:nvSpPr", "p:nvPr", "p:ph", "attrs", "idx"]);
 				
 				if (id !== undefined) {
 					idTable[id] = targetNode[i];
@@ -217,9 +228,8 @@ function indexNodes(content) {
 				}
 			}
 		} else {
-			var id = (targetNode["p:nvSpPr"]["p:cNvPr"] === undefined) ? undefined : targetNode["p:nvSpPr"]["p:cNvPr"]["attrs"]["id"];
-			var idx = (targetNode["p:nvSpPr"]["p:nvPr"] === undefined || targetNode["p:nvSpPr"]["p:nvPr"]["p:ph"] === undefined) ? 
-				undefined : targetNode["p:nvSpPr"]["p:nvPr"]["p:ph"]["attrs"]["idx"];
+			var id = getTextByPathList(targetNode, ["p:nvSpPr", "p:cNvPr", "attrs", "id"]);
+			var idx = getTextByPathList(targetNode, ["p:nvSpPr", "p:nvPr", "p:ph", "attrs", "idx"]);
 			
 			if (id !== undefined) {
 				idTable[id] = targetNode;
@@ -342,7 +352,7 @@ function processSpNode(node, warpObj) {
 				getPosition(node, slideLayoutSpNode, slideMasterSpNode) + 
 				getSize(node, slideLayoutSpNode, slideMasterSpNode) + 
 				getBorder(node) +
-				//getFill(node) +
+				getFill(node) +
 			"'>";
 	
 	// Text
@@ -678,67 +688,6 @@ function getVerticalAlign(node, slideLayoutSpNode, slideMasterSpNode, type) {
 	return anchor === "ctr" ? "v-mid" : anchor === "b" ?  "v-down" : "v-mid";
 }
 
-function getAlign(node, slideLayoutSpNode, slideMasterSpNode, type) {
-	
-	// 上中下對齊: X, <a:bodyPr anchor="ctr">, <a:bodyPr anchor="b">
-	var anchor = getTextByPathList(node, ["p:txBody", "a:bodyPr", "attrs", "anchor"]);
-	if (anchor === undefined) {
-		anchor = getTextByPathList(slideLayoutSpNode, ["p:txBody", "a:bodyPr", "attrs", "anchor"]);
-		if (anchor === undefined) {
-			anchor = getTextByPathList(slideMasterSpNode, ["p:txBody", "a:bodyPr", "attrs", "anchor"]);
-		}
-	}
-	
-	// 左中右對齊: X, <a:pPr algn="ctr"/>, <a:pPr algn="r"/>
-	// TODO: in p r
-	var algn = "ctr";
-	/*
-	var algn = node.find("pPr").attr("algn");
-	if (algn === undefined) {
-		algn = slideLayoutSpNode.find("pPr").attr("algn");
-	}
-	if (algn === undefined) {
-		algn = slideMasterSpNode.find("pPr").attr("algn");
-		if (algn === undefined) {
-			algn = slideMasterSpNode.find("lvl1pPr").attr("algn");
-		}
-	}
-	*/
-	
-	if (type == "title" || type == "subTitle" || type == "ctrTitle") {
-		algn = "ctr";
-	} else {
-		algn = "left";
-	}
-	
-	if (anchor === "ctr") {
-		if (algn === "ctr") {
-			return "center-center";
-		} else if (algn === "r") {
-			return "center-right";
-		} else {
-			return "center-left";
-		}
-	} else if (anchor === "b") {
-		if (algn === "ctr") {
-			return "down-center";
-		} else if (algn === "r") {
-			return "down-right";
-		} else {
-			return "down-left";
-		}
-	} else {
-		if (algn === "ctr") {
-			return "up-center";
-		} else if (algn === "r") {
-			return "up-right";
-		} else {
-			return "up-left";
-		}
-	}
-
-}
-
 function getFontType(node) {
 	var typeface = getTextByPathList(node, ["a:rPr", "a:latin", "attrs", "typeface"]);
 	return (typeface === undefined) ? "inherit" : typeface;
@@ -853,28 +802,29 @@ function getBorder(node) {
 
 function getFill(node) {
 	
-	/*
 	// 1. presentationML
 	// From slide
-	var fillColor = $node.children("spPr").children("solidFill").find("srgbClr").attr("val");
+	var fillColor = getTextByPathList(node, ["p:spPr", "a:solidFill", "a:srgbClr", "attrs", "val"]);
 	
 	// From theme
 	if (fillColor === undefined) {
-		fillColor = $themeXML.find($node.find("spPr").find("solidFill").find("schemeClr").attr("val")).find("srgbClr").attr("val");
+		var schemeClr = "a:" + getTextByPathList(node, ["p:spPr", "a:solidFill", "a:schemeClr", "attrs", "val"]);
+		fillColor = getTextByPathList(themeContent, ["a:theme", "a:themeElements", "a:clrScheme", schemeClr, "a:srgbClr", "attrs", "val"]);
 		// TODO: 較淺, 較深 80%
 	}
 	
 	// 2. drawingML namespace
 	if (fillColor === undefined) {
-		fillColor = $themeXML.find($node.find("style").find("fillRef").find("schemeClr").attr("val")).find("srgbClr").attr("val");
+		var schemeClr = "a:" + getTextByPathList(node, ["p:style", "a:fillRef", "a:schemeClr", "attrs", "val"]);
+		fillColor = getTextByPathList(themeContent, ["a:theme", "a:themeElements", "a:clrScheme", schemeClr, "a:srgbClr", "attrs", "val"]);
 	}
-	
+		
 	if (fillColor !== undefined) {
 		return "background-color: #" + fillColor + ";";
 	} else {
 		return "";
 	}
-	*/
+	
 }
 
 function getTextByPathStr(node, pathStr) {
