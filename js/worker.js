@@ -810,7 +810,6 @@ function getFill(node) {
 	if (fillColor === undefined) {
 		var schemeClr = "a:" + getTextByPathList(node, ["p:spPr", "a:solidFill", "a:schemeClr", "attrs", "val"]);
 		fillColor = getTextByPathList(themeContent, ["a:theme", "a:themeElements", "a:clrScheme", schemeClr, "a:srgbClr", "attrs", "val"]);
-		// TODO: 較淺, 較深 80%
 	}
 	
 	// 2. drawingML namespace
@@ -818,9 +817,25 @@ function getFill(node) {
 		var schemeClr = "a:" + getTextByPathList(node, ["p:style", "a:fillRef", "a:schemeClr", "attrs", "val"]);
 		fillColor = getTextByPathList(themeContent, ["a:theme", "a:themeElements", "a:clrScheme", schemeClr, "a:srgbClr", "attrs", "val"]);
 	}
-		
+	
 	if (fillColor !== undefined) {
-		return "background-color: #" + fillColor + ";";
+		
+		fillColor = "#" + fillColor;
+		
+		// Apply shade or tint
+		// TODO: 較淺, 較深 80%
+		var lumMod = parseInt(getTextByPathList(node, ["p:spPr", "a:solidFill", "a:schemeClr", "a:lumMod", "attrs", "val"])) / 100000;
+		var lumOff = parseInt(getTextByPathList(node, ["p:spPr", "a:solidFill", "a:schemeClr", "a:lumOff", "attrs", "val"])) / 100000;
+		if (isNaN(lumMod)) {
+			lumMod = 1.0;
+		}
+		if (isNaN(lumOff)) {
+			lumOff = 0;
+		}
+		console.log([lumMod, lumOff]);
+		fillColor = applyLumModify(fillColor, lumMod, lumOff);
+		
+		return "background-color: " + fillColor + ";";
 	} else {
 		return "";
 	}
@@ -844,6 +859,47 @@ function getTextByPathList(node, path) {
 	}
 }
 
+// ===== Color functions =====
+/**
+ * applyShade
+ * @param {string} rgbStr
+ * @param {number} shadeValue
+ */
+function applyShade(rgbStr, shadeValue) {
+	var color = new colz.Color(rgbStr);
+	color.setLum(color.hsl.l * shadeValue);
+	return color.rgb.toString();
+}
+
+/**
+ * applyTint
+ * @param {string} rgbStr
+ * @param {number} tintValue
+ */
+function applyTint(rgbStr, tintValue) {
+	var color = new colz.Color(rgbStr);
+	color.setLum(color.hsl.l * tintValue + (1 - tintValue));
+	return color.rgb.toString();
+}
+
+/**
+ * applyLumModify
+ * @param {string} rgbStr
+ * @param {number} factor
+ * @param {number} offset
+ */
+function applyLumModify(rgbStr, factor, offset) {
+	var color = new colz.Color(rgbStr);
+	//color.setLum(color.hsl.l * factor);
+	color.setLum(color.hsl.l * (1 + offset));
+	return color.rgb.toString();
+}
+
+// ===== Debug functions =====
+/**
+ * debug
+ * @param {Object} data
+ */
 function debug(data) {
 	self.postMessage({"type": "DEBUG", "data": data});
 }
