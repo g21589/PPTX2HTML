@@ -11,6 +11,10 @@ importScripts(
 
 var themeContent = null;
 
+var titleFontSize = 42;
+var bodyFontSize = 20;
+var otherFontSize = 18;
+
 onmessage = function(e) {
 	
 	var dateBefore = new Date();
@@ -206,6 +210,7 @@ function indexNodes(content) {
 	
 	var idTable = {};
 	var idxTable = {};
+	var typeTable = {};
 	
 	for (var key in spTreeNode) {
 
@@ -219,6 +224,7 @@ function indexNodes(content) {
 			for (var i=0; i<targetNode.length; i++) {
 				var id = getTextByPathList(targetNode[i], ["p:nvSpPr", "p:cNvPr", "attrs", "id"]);
 				var idx = getTextByPathList(targetNode[i], ["p:nvSpPr", "p:nvPr", "p:ph", "attrs", "idx"]);
+				var type = getTextByPathList(targetNode[i], ["p:nvSpPr", "p:nvPr", "p:ph", "attrs", "type"]);
 				
 				if (id !== undefined) {
 					idTable[id] = targetNode[i];
@@ -226,10 +232,14 @@ function indexNodes(content) {
 				if (idx !== undefined) {
 					idxTable[idx] = targetNode[i];
 				}
+				if (type !== undefined) {
+					typeTable[type] = targetNode[i];
+				}
 			}
 		} else {
 			var id = getTextByPathList(targetNode, ["p:nvSpPr", "p:cNvPr", "attrs", "id"]);
 			var idx = getTextByPathList(targetNode, ["p:nvSpPr", "p:nvPr", "p:ph", "attrs", "idx"]);
+			var type = getTextByPathList(targetNode[i], ["p:nvSpPr", "p:nvPr", "p:ph", "attrs", "type"]);
 			
 			if (id !== undefined) {
 				idTable[id] = targetNode;
@@ -237,11 +247,14 @@ function indexNodes(content) {
 			if (idx !== undefined) {
 				idxTable[idx] = targetNode;
 			}
+			if (type !== undefined) {
+				typeTable[type] = targetNode;
+			}
 		}
 		
 	}
 	
-	return {idTable, idxTable};
+	return {idTable, idxTable, typeTable};
 }
 
 function processNodesInSlide(nodeKey, nodeValue, warpObj, depth) {
@@ -333,12 +346,30 @@ function processSpNode(node, warpObj) {
 	var slideLayoutSpNode = undefined;
 	var slideMasterSpNode = undefined;
 	
-	slideLayoutSpNode = warpObj["slideLayoutTables"]["idTable"][id];
-	if (idx === undefined) {	
-		slideMasterSpNode = warpObj["slideMasterTables"]["idTable"][id];
+	if (type !== undefined) {
+		if (idx !== undefined) {
+			//slideLayoutSpNode = warpObj["slideLayoutTables"]["idxTable"][idx];
+			//slideMasterSpNode = warpObj["slideMasterTables"]["idxTable"][idx];
+			slideLayoutSpNode = warpObj["slideLayoutTables"]["typeTable"][type];
+			slideMasterSpNode = warpObj["slideMasterTables"]["typeTable"][type];
+		} else {
+			slideLayoutSpNode = warpObj["slideLayoutTables"]["typeTable"][type];
+			slideMasterSpNode = warpObj["slideMasterTables"]["typeTable"][type];
+		}
 	} else {
-		var _id = warpObj["slideLayoutTables"]["idxTable"][idx]["p:nvSpPr"]["p:cNvPr"]["attrs"]["id"];
-		slideMasterSpNode = warpObj["slideMasterTables"]["idTable"][_id];
+		if (idx !== undefined) {
+			slideLayoutSpNode = warpObj["slideLayoutTables"]["idxTable"][idx];
+			slideMasterSpNode = warpObj["slideMasterTables"]["idxTable"][idx];
+		} else {
+			// Nothing
+		}
+	}
+	
+	if (type === undefined) {
+		type = getTextByPathList(slideLayoutSpNode, ["p:nvSpPr", "p:nvPr", "p:ph", "attrs", "type"]);
+		if (type === undefined) {
+			type = getTextByPathList(slideMasterSpNode, ["p:nvSpPr", "p:nvPr", "p:ph", "attrs", "type"]);
+		}
 	}
 	
 	debug( {id, name, idx, type} );
@@ -367,6 +398,7 @@ function processSpNode(node, warpObj) {
 			var pNode = textBodyNode["a:p"][i];
 			var rNode = pNode["a:r"];
 			text += "<div class='" + getHorizontalAlign(pNode, slideLayoutSpNode, slideMasterSpNode, type) + "'>";
+			text += genBuChar(pNode);
 			if (rNode === undefined) {
 				// without r
 				text += genSpanElement(pNode, slideLayoutSpNode, slideMasterSpNode);
@@ -386,6 +418,7 @@ function processSpNode(node, warpObj) {
 		var pNode = textBodyNode["a:p"];
 		var rNode = pNode["a:r"];
 		text += "<div class='" + getHorizontalAlign(pNode, slideLayoutSpNode, slideMasterSpNode, type) + "'>";
+		text += genBuChar(pNode);
 		if (rNode === undefined) {
 			// without r
 			text += genSpanElement(pNode, slideLayoutSpNode, slideMasterSpNode);
@@ -434,6 +467,31 @@ function processPicNode(node, warpObj) {
 	}
 	return "<div class='block content' style='" + getPosition(node, null, null) + getSize(node, null, null) +
 			   "'><img src=\"data:" + mimeType + ";base64," + base64ArrayBuffer(imgArrayBuffer) + "\" style='width: 100%; height: 100%'/></div>";
+}
+
+function genBuChar(node) {
+	var pPrNode = node["a:pPr"];
+	var buChar = getTextByPathList(pPrNode, ["a:buChar", "attrs", "char"]);
+	if (buChar !== undefined) {
+		var buFontAttrs = getTextByPathList(pPrNode, ["a:buFont", "attrs"]);
+		if (buFontAttrs !== undefined) {
+			var marginLeft = parseInt( getTextByPathList(pPrNode, ["attrs", "marL"]) ) * 96 / 914400;
+			var marginRight = parseInt(buFontAttrs["pitchFamily"]);
+			if (isNaN(marginLeft)) {
+				marginLeft = 0;
+			}
+			if (isNaN(marginRight)) {
+				marginRight = 0;
+			}
+			var typeface = buFontAttrs["typeface"];
+			
+			return "<span style='font-family: " + typeface + 
+					"; margin-left: " + marginLeft + "px" +
+					"; margin-right: " + marginRight + "pt;'>" + buChar + "</span>";
+		}
+	}
+	
+	return "";
 }
 
 function genSpanElement(node, slideLayoutSpNode, slideMasterSpNode) {
@@ -518,8 +576,12 @@ function getHorizontalAlign(node, slideLayoutSpNode, slideMasterSpNode, type) {
 		}
 	}
 	// TODO:
-	if (algn === undefined && (type == "title" || type == "subTitle" || type == "ctrTitle")) {
-		return "h-mid";
+	if (algn === undefined) {
+		if (type == "title" || type == "subTitle" || type == "ctrTitle") {
+			return "h-mid";
+		} else if (type == "sldNum") {
+			return "h-right";
+		}
 	}
 	return algn === "ctr" ? "h-mid" : algn === "r" ? "h-right" : "h-left";
 }
@@ -535,7 +597,7 @@ function getVerticalAlign(node, slideLayoutSpNode, slideMasterSpNode, type) {
 		}
 	}
 	
-	return anchor === "ctr" ? "v-mid" : anchor === "b" ?  "v-down" : "v-mid";
+	return anchor === "ctr" ? "v-mid" : anchor === "b" ?  "v-down" : "v-up";
 }
 
 function getFontType(node) {
@@ -564,15 +626,15 @@ function getFontSize(node, slideLayoutSpNode, slideMasterSpNode, type) {
 		fontSize = parseInt(slideLayoutSpNode["a:defRPr"]["attrs"]["sz"]) / 100;
 	}
 	*/
-	/*
+	
 	if (isNaN(fontSize)) {
 		if (type == "title" || type == "subTitle" || type == "ctrTitle") {
 			fontSize = titleFontSize;
-		} else {
+		} else if (type === undefined) {
 			fontSize = otherFontSize;
 		}
 	}
-	*/
+	
 	return isNaN(fontSize) ? "inherit" : (fontSize + "pt");
 }
 
