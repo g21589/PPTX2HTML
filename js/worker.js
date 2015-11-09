@@ -21,11 +21,13 @@ onmessage = function(e) {
 	
 	var zip = new JSZip(e.data);
 	
-	var pptxThumbImg = base64ArrayBuffer(zip.file("docProps/thumbnail.jpeg").asArrayBuffer());
-	self.postMessage({
-		"type": "pptx-thumb",
-		"data": pptxThumbImg
-	});
+	if (zip.file("docProps/thumbnail.jpeg") !== null) {
+		var pptxThumbImg = base64ArrayBuffer(zip.file("docProps/thumbnail.jpeg").asArrayBuffer());
+		self.postMessage({
+			"type": "pptx-thumb",
+			"data": pptxThumbImg
+		});
+	}
 	
 	var filesInfo = getContentTypes(zip);
 	var slideSize = getSlideSize(zip);
@@ -269,33 +271,7 @@ function processNodesInSlide(nodeKey, nodeValue, warpObj, depth) {
 			result += processPicNode(nodeValue, warpObj);
 			break;
 		case "p:graphicFrame":	// Chart, Diagram, Table
-			/*
-			if ($node.find("graphicData").attr("uri") === 
-					"http://schemas.openxmlformats.org/drawingml/2006/table") {
-				// Table
-				$tableNode = $node.find("graphic").find("tbl");
-				$xfrmNode = $node.find("xfrm");
-				var tableHtml = "<table style='" + getPosition($xfrmNode, null, null) + getSize($xfrmNode, null, null) + "'>";
-				$tableNode.find("tr").each(function(index, node) {
-					var $node = $(node);
-					tableHtml += "<tr>";
-					$node.find("tc").each(function(index, node) {
-						var $node = $(node);
-						tableHtml += "<td>" + $node.find("t").text() + "</td>";
-					});
-					tableHtml += "</tr>";
-				});
-				tableHtml += "</table>";
-				result += tableHtml;
-			} else if ($node.find("graphicData").attr("uri") === 
-					"http://schemas.openxmlformats.org/drawingml/2006/chart") {
-				// TODO: Chart
-				
-			} else {
-				// TODO: Diagram
-				
-			}
-			*/
+			result += processGraphicFrameNode(nodeValue, warpObj);
 			break;
 		case "p:grpSp":	// 群組
 			result += "<div class='block group'";			
@@ -469,6 +445,63 @@ function processPicNode(node, warpObj) {
 			   "'><img src=\"data:" + mimeType + ";base64," + base64ArrayBuffer(imgArrayBuffer) + "\" style='width: 100%; height: 100%'/></div>";
 }
 
+function processGraphicFrameNode(node, warpObj) {
+	
+	var result = "";
+	var graphicTypeUri = getTextByPathList(node, ["a:graphic", "a:graphicData", "attrs", "uri"]);
+	
+	switch (graphicTypeUri) {
+		case "http://schemas.openxmlformats.org/drawingml/2006/table":
+			var tableNode = getTextByPathList(node, ["a:graphic", "a:graphicData", "a:tbl"]);
+			var xfrmNode = getTextByPathList(node, ["p:xfrm"]);
+			var tableHtml = "<table style='" + /* getPosition(xfrmNode, null, null) + getSize(xfrmNode, null, null) +*/ "'>";
+			
+			var trNodes = tableNode["a:tr"];
+			if (trNodes.constructor === Array) {
+				for (var i=0; i<trNodes.length; i++) {
+					tableHtml += "<tr>";
+					var tcNodes = trNodes[i]["a:tc"];
+					if (tcNodes.constructor === Array) {
+						for (var j=0; j<tcNodes.length; j++) {
+							var txBodyNode = tcNodes[j]["a:txBody"];
+							var text = txBodyNode["a:p"]["a:r"]["a:t"];
+							tableHtml += "<td>" + text + "</td>";
+						}
+					} else {
+						var txBodyNode = tcNodes["a:txBody"];
+						var text = txBodyNode["a:p"]["a:r"]["a:t"];
+						tableHtml += "<td>" + text + "</td>";
+					}
+					tableHtml += "</tr>";
+				}
+			} else {
+				tableHtml += "<tr>";
+				var tcNodes = trNodes["a:tc"];
+				if (tcNodes.constructor === Array) {
+					for (var j=0; j<tcNodes.length; j++) {
+						var txBodyNode = tcNodes[j]["a:txBody"];
+						var text = txBodyNode["a:p"]["a:r"]["a:t"];
+						tableHtml += "<td>" + text + "</td>";
+					}
+				} else {
+					var txBodyNode = tcNodes["a:txBody"];
+					var text = txBodyNode["a:p"]["a:r"]["a:t"];
+					tableHtml += "<td>" + text + "</td>";
+				}
+				tableHtml += "</tr>";
+			}
+			result = tableHtml;
+			break;
+		case "http://schemas.openxmlformats.org/drawingml/2006/chart":
+			break;
+		case "http://schemas.openxmlformats.org/drawingml/2006/diagram":
+			break;
+		default:
+	}
+	
+	return result;
+}
+
 function genBuChar(node) {
 	var pPrNode = node["a:pPr"];
 	var buChar = getTextByPathList(pPrNode, ["a:buChar", "attrs", "char"]);
@@ -617,7 +650,6 @@ function getFontSize(node, slideLayoutSpNode, slideMasterSpNode, type) {
 	}
 	
 	if ((isNaN(fontSize) || fontSize === undefined)) {
-		console.log("XXXasdfasdgd");
 		var sz = getTextByPathList(slideLayoutSpNode, ["p:txBody", "a:lstStyle", "a:lvl1pPr", "a:defRPr", "attrs", "sz"]);
 		fontSize = parseInt(sz) / 100;
 	}	
@@ -752,7 +784,7 @@ function getFill(node) {
 		if (isNaN(lumOff)) {
 			lumOff = 0;
 		}
-		console.log([lumMod, lumOff]);
+		//console.log([lumMod, lumOff]);
 		fillColor = applyLumModify(fillColor, lumMod, lumOff);
 		
 		return "background-color: " + fillColor + ";";
@@ -762,10 +794,21 @@ function getFill(node) {
 	
 }
 
+// ===== Node functions =====
+/**
+ * getTextByPathStr
+ * @param {Object} node
+ * @param {string} pathStr
+ */
 function getTextByPathStr(node, pathStr) {
 	return getTextByPathList(node, pathStr.trim().split(/\s+/));
 }
 
+/**
+ * getTextByPathList
+ * @param {Object} node
+ * @param {string Array} path
+ */
 function getTextByPathList(node, path) {
 	if (path.constructor !== Array) {
 		throw Error("Error of path type! path is not array.");
@@ -776,6 +819,22 @@ function getTextByPathList(node, path) {
 		return node[path[0]];
 	} else {
 		return getTextByPathList(node[path[0]], path.slice(1));
+	}
+}
+
+/**
+ * eachChild
+ * @param {Object} node
+ * @param {function} doFunction
+ */
+function eachChild(node, doFunction) {
+	if (node.constructor === Array) {
+		var l = node.length;
+		for (var i=0; i<l; i++) {
+			doFunction(node[i]);
+		}
+	} else {
+		doFunction(node);
 	}
 }
 
