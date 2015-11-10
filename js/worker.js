@@ -352,12 +352,13 @@ function processSpNode(node, warpObj) {
 	//debug( JSON.stringify( node ) );
 	
 	var text = "";
+	var xfrmList = ["p:spPr", "a:xfrm"];
 	
 	text += "<div class='block content " + getVerticalAlign(node, slideLayoutSpNode, slideMasterSpNode, type) +
 			"' _id='" + id + "' _idx='" + idx + "' _type='" + type + "' _name='" + name +
 			"' style='" + 
-				getPosition(node, slideLayoutSpNode, slideMasterSpNode) + 
-				getSize(node, slideLayoutSpNode, slideMasterSpNode) + 
+				getPosition(getTextByPathList(node, xfrmList), getTextByPathList(slideLayoutSpNode, xfrmList), getTextByPathList(slideMasterSpNode, xfrmList)) + 
+				getSize(getTextByPathList(node, xfrmList), getTextByPathList(slideLayoutSpNode, xfrmList), getTextByPathList(slideMasterSpNode, xfrmList)) + 
 				getBorder(node) +
 				getFill(node) +
 			"'>";
@@ -367,7 +368,105 @@ function processSpNode(node, warpObj) {
 		return text;
 	}
 	
-	var textBodyNode = node["p:txBody"];
+	text += genTextBody(node["p:txBody"], slideLayoutSpNode, slideMasterSpNode, type);
+	
+	text += "</div>";
+	return text;
+}
+
+function processPicNode(node, warpObj) {
+	
+	//debug( JSON.stringify( node ) );
+	
+	var rid = node["p:blipFill"]["a:blip"]["attrs"]["r:embed"];
+	var imgName = warpObj["slideResObj"][rid]["target"];
+	var imgFileExt = extractFileExtension(imgName).toLowerCase();
+	var zip = warpObj["zip"];
+	var imgArrayBuffer = zip.file(imgName).asArrayBuffer();
+	var mimeType = "";
+	var xfrmNode = node["p:spPr"]["a:xfrm"];
+	switch (imgFileExt) {
+		case "jpg":
+		case "jpeg":
+			mimeType = "image/jpeg";
+			break;
+		case "png":
+			mimeType = "image/png";
+			break;
+		case "emf": // Not native support
+			mimeType = "image/emf";
+			break;
+		case "wmf": // Not native support
+			mimeType = "image/wmf";
+			break;
+		default:
+			mimeType = "image/*";
+	}
+	return "<div class='block content' style='" + getPosition(xfrmNode, undefined, undefined) + getSize(xfrmNode, undefined, undefined) +
+			   "'><img src=\"data:" + mimeType + ";base64," + base64ArrayBuffer(imgArrayBuffer) + "\" style='width: 100%; height: 100%'/></div>";
+}
+
+function processGraphicFrameNode(node, warpObj) {
+	
+	var result = "";
+	var graphicTypeUri = getTextByPathList(node, ["a:graphic", "a:graphicData", "attrs", "uri"]);
+	
+	switch (graphicTypeUri) {
+		case "http://schemas.openxmlformats.org/drawingml/2006/table":
+			var tableNode = getTextByPathList(node, ["a:graphic", "a:graphicData", "a:tbl"]);
+			var xfrmNode = getTextByPathList(node, ["p:xfrm"]);
+			var tableHtml = "<table style='" + getPosition(xfrmNode, undefined, undefined) + getSize(xfrmNode, undefined, undefined) + "'>";
+			
+			var trNodes = tableNode["a:tr"];
+			if (trNodes.constructor === Array) {
+				for (var i=0; i<trNodes.length; i++) {
+					tableHtml += "<tr>";
+					var tcNodes = trNodes[i]["a:tc"];
+					if (tcNodes.constructor === Array) {
+						for (var j=0; j<tcNodes.length; j++) {
+							var text = genTextBody(tcNodes[j]["a:txBody"]);
+							tableHtml += "<td>" + text + "</td>";
+						}
+					} else {
+						var text = genTextBody(tcNodes["a:txBody"]);
+						tableHtml += "<td>" + text + "</td>";
+					}
+					tableHtml += "</tr>";
+				}
+			} else {
+				tableHtml += "<tr>";
+				var tcNodes = trNodes["a:tc"];
+				if (tcNodes.constructor === Array) {
+					for (var j=0; j<tcNodes.length; j++) {
+						var text = genTextBody(tcNodes[j]["a:txBody"]);
+						tableHtml += "<td>" + text + "</td>";
+					}
+				} else {
+					var text = genTextBody(tcNodes["a:txBody"]);
+					tableHtml += "<td>" + text + "</td>";
+				}
+				tableHtml += "</tr>";
+			}
+			result = tableHtml;
+			break;
+		case "http://schemas.openxmlformats.org/drawingml/2006/chart":
+			break;
+		case "http://schemas.openxmlformats.org/drawingml/2006/diagram":
+			break;
+		default:
+	}
+	
+	return result;
+}
+
+function genTextBody(textBodyNode, slideLayoutSpNode, slideMasterSpNode, type) {
+	
+	var text = "";
+	
+	if (textBodyNode === undefined) {
+		return text;
+	}
+
 	if (textBodyNode["a:p"].constructor === Array) {
 		// multi p
 		for (var i=0; i<textBodyNode["a:p"].length; i++) {
@@ -410,96 +509,7 @@ function processSpNode(node, warpObj) {
 		text += "</div>";
 	}
 	
-	text += "</div>";
 	return text;
-}
-
-function processPicNode(node, warpObj) {
-	
-	//debug( JSON.stringify( node ) );
-	
-	var rid = node["p:blipFill"]["a:blip"]["attrs"]["r:embed"];
-	var imgName = warpObj["slideResObj"][rid]["target"];
-	var imgFileExt = extractFileExtension(imgName).toLowerCase();
-	var zip = warpObj["zip"];
-	var imgArrayBuffer = zip.file(imgName).asArrayBuffer();
-	var mimeType = "";
-	switch (imgFileExt) {
-		case "jpg":
-		case "jpeg":
-			mimeType = "image/jpeg";
-			break;
-		case "png":
-			mimeType = "image/png";
-			break;
-		case "emf": // Not native support
-			mimeType = "image/emf";
-			break;
-		case "wmf": // Not native support
-			mimeType = "image/wmf";
-			break;
-		default:
-			mimeType = "image/*";
-	}
-	return "<div class='block content' style='" + getPosition(node, null, null) + getSize(node, null, null) +
-			   "'><img src=\"data:" + mimeType + ";base64," + base64ArrayBuffer(imgArrayBuffer) + "\" style='width: 100%; height: 100%'/></div>";
-}
-
-function processGraphicFrameNode(node, warpObj) {
-	
-	var result = "";
-	var graphicTypeUri = getTextByPathList(node, ["a:graphic", "a:graphicData", "attrs", "uri"]);
-	
-	switch (graphicTypeUri) {
-		case "http://schemas.openxmlformats.org/drawingml/2006/table":
-			var tableNode = getTextByPathList(node, ["a:graphic", "a:graphicData", "a:tbl"]);
-			var xfrmNode = getTextByPathList(node, ["p:xfrm"]);
-			var tableHtml = "<table style='" + /* getPosition(xfrmNode, null, null) + getSize(xfrmNode, null, null) +*/ "'>";
-			
-			var trNodes = tableNode["a:tr"];
-			if (trNodes.constructor === Array) {
-				for (var i=0; i<trNodes.length; i++) {
-					tableHtml += "<tr>";
-					var tcNodes = trNodes[i]["a:tc"];
-					if (tcNodes.constructor === Array) {
-						for (var j=0; j<tcNodes.length; j++) {
-							var txBodyNode = tcNodes[j]["a:txBody"];
-							var text = txBodyNode["a:p"]["a:r"]["a:t"];
-							tableHtml += "<td>" + text + "</td>";
-						}
-					} else {
-						var txBodyNode = tcNodes["a:txBody"];
-						var text = txBodyNode["a:p"]["a:r"]["a:t"];
-						tableHtml += "<td>" + text + "</td>";
-					}
-					tableHtml += "</tr>";
-				}
-			} else {
-				tableHtml += "<tr>";
-				var tcNodes = trNodes["a:tc"];
-				if (tcNodes.constructor === Array) {
-					for (var j=0; j<tcNodes.length; j++) {
-						var txBodyNode = tcNodes[j]["a:txBody"];
-						var text = txBodyNode["a:p"]["a:r"]["a:t"];
-						tableHtml += "<td>" + text + "</td>";
-					}
-				} else {
-					var txBodyNode = tcNodes["a:txBody"];
-					var text = txBodyNode["a:p"]["a:r"]["a:t"];
-					tableHtml += "<td>" + text + "</td>";
-				}
-				tableHtml += "</tr>";
-			}
-			result = tableHtml;
-			break;
-		case "http://schemas.openxmlformats.org/drawingml/2006/chart":
-			break;
-		case "http://schemas.openxmlformats.org/drawingml/2006/diagram":
-			break;
-		default:
-	}
-	
-	return result;
 }
 
 function genBuChar(node) {
@@ -555,12 +565,12 @@ function getPosition(slideSpNode, slideLayoutSpNode, slideMasterSpNode) {
 	var off = undefined;
 	var x = -1, y = -1;
 	
-	if (slideSpNode["p:spPr"]["a:xfrm"] !== undefined) {
-		off = slideSpNode["p:spPr"]["a:xfrm"]["a:off"]["attrs"];
-	} else if (slideLayoutSpNode !== undefined && slideLayoutSpNode["p:spPr"]["a:xfrm"] !== undefined) {
-		off = slideLayoutSpNode["p:spPr"]["a:xfrm"]["a:off"]["attrs"];
-	} else if (slideMasterSpNode !== undefined && slideMasterSpNode["p:spPr"]["a:xfrm"] !== undefined) {
-		off = slideMasterSpNode["p:spPr"]["a:xfrm"]["a:off"]["attrs"];
+	if (slideSpNode !== undefined) {
+		off = slideSpNode["a:off"]["attrs"];
+	} else if (slideLayoutSpNode !== undefined) {
+		off = slideLayoutSpNode["a:off"]["attrs"];
+	} else if (slideMasterSpNode !== undefined) {
+		off = slideMasterSpNode["a:off"]["attrs"];
 	}
 	
 	if (off === undefined) {
@@ -581,12 +591,12 @@ function getSize(slideSpNode, slideLayoutSpNode, slideMasterSpNode) {
 	var ext = undefined;
 	var w = -1, h = -1;
 	
-	if (slideSpNode["p:spPr"]["a:xfrm"] !== undefined) {
-		ext = slideSpNode["p:spPr"]["a:xfrm"]["a:ext"]["attrs"];
-	} else if (slideLayoutSpNode !== undefined && slideLayoutSpNode["p:spPr"]["a:xfrm"] !== undefined) {
-		ext = slideLayoutSpNode["p:spPr"]["a:xfrm"]["a:ext"]["attrs"];
-	} else if (slideMasterSpNode !== undefined && slideMasterSpNode["p:spPr"]["a:xfrm"] !== undefined) {
-		ext = slideMasterSpNode["p:spPr"]["a:xfrm"]["a:ext"]["attrs"];
+	if (slideSpNode !== undefined) {
+		ext = slideSpNode["a:ext"]["attrs"];
+	} else if (slideLayoutSpNode !== undefined) {
+		ext = slideLayoutSpNode["a:ext"]["attrs"];
+	} else if (slideMasterSpNode !== undefined) {
+		ext = slideMasterSpNode["a:ext"]["attrs"];
 	}
 	
 	if (ext === undefined) {
