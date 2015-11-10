@@ -16,14 +16,9 @@
 <script src="https://oss.maxcdn.com/respond/1.4.2/respond.min.js"></script>
 <![endif]-->
 
-<link rel="stylesheet" href="./css/highlight.min.css">
+<link rel="stylesheet" href="./css/font-awesome.min.css">
 <link rel="stylesheet" href="./css/pptx2html.css">
-
-<script type="text/javascript" src="./js/jszip.min.js"></script>
 <script type="text/javascript" src="./js/jquery-1.11.3.min.js"></script>
-<script type="text/javascript" src="./js/highlight.min.js"></script>
-<script type="text/javascript" src="./js/vkbeautify.js"></script>
-<script type="text/javascript" src="./js/colz.class.min.js"></script>
 
 </head>
 
@@ -33,8 +28,8 @@
 		
 		<div class="header">
 			<ul class="nav nav-pills pull-right">
-				<li class="active"><a href="#">Home</a></li>
-				<li><a href="https://github.com/g21589/PPTX2HTML">Github</a></li>
+				<li class="active"><a href="#"><i class="glyphicon glyphicon-home"></i> Home</a></li>
+				<li><a href="https://github.com/g21589/PPTX2HTML"><i class="fa fa-github"></i> Github</a></li>
 			</ul>
 			<h2 class="text-muted">PPTX2HTML</h2>
 		</div>
@@ -47,28 +42,37 @@
 		<div class="row">
 			<div class="col-lg-12">
 				<h3>選取PPTX檔案</h3>
-				<input type="file" id="file" name="file" accept="application/vnd.openxmlformats-officedocument.presentationml.presentation">
+				<div class="fileUpload btn btn-primary">
+					<span><i class="glyphicon glyphicon-upload"></i> Upload</span>
+					<input id="uploadBtn" type="file" class="upload" accept="application/vnd.openxmlformats-officedocument.presentationml.presentation"/>
+				</div>
+				<button type="button" class="btn btn-success"><i class="glyphicon glyphicon-download-alt"></i> Download Slides</button>
+			</div>
+			<div class="col-lg-12">
+				<img id="pptx-thumb" class="img-thumbnail" src="" alt="">
 			</div>
 		</div>
 		
 		<br>
 		
-		<!--div class="row">
+		<div class="row">
 			<div class="col-lg-12">
 				<div class="progress">
-					<div id="load-progress" class="progress-bar progress-bar-striped active" role="progressbar" aria-valuenow="60" aria-valuemin="0" aria-valuemax="100" style="width: 60%;">
-						60%
+					<div id="load-progress" class="progress-bar progress-bar-striped" style="transition: none;" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" style="width: 0%;">
+						0%
 					</div>
 				</div>
 			</div>
-		</div-->
+		</div>
 		
 		<div class="row">
 			<div class="col-lg-12">
 				<div id="error_block" class="alert alert-danger hidden">
 					You will need a recent browser to use this demo :(
 				</div>
-
+				<div id="info_block" class="alert alert-success" role="alert">
+				
+				</div>
 				<div id="result_block" class="hidden">
 					<h3>內容 :</h3>
 					<div id="result"></div>
@@ -86,7 +90,83 @@
 <!-- Include all compiled plugins (below), or include individual files as needed -->
 <script type="text/javascript" src="js/bootstrap.min.js"></script>
 
-<script type="text/javascript" src="./js/pptx2html.js"></script>
+<!--script type="text/javascript" src="./js/pptx2html.js"></script-->
+
+<script type="text/javascript">
+$(document).ready(function() {
+
+	if (window.Worker) {
+		
+		var $result = $("#result");
+		$("#uploadBtn").on("change", function(evt) {
+			
+			$result.html("");
+			$("#load-progress").text("0%").attr("aria-valuenow", 0).css("width", "0%");
+			$("#result_block").removeClass("hidden").addClass("show");
+			
+			var fileName = evt.target.files[0];
+			
+			// Read the file
+			var reader = new FileReader();
+			reader.onload = (function(theFile) {
+				return function(e) {
+					
+					// Web Worker
+					var worker = new Worker('./js/worker.js');
+				
+					worker.addEventListener('message', function(e) {
+						
+						var msg = e.data;
+						
+						switch(msg.type) {
+							case "progress-update":
+								$("#load-progress").text(msg.data.toFixed(2) + "%")
+									.attr("aria-valuenow", msg.data.toFixed(2))
+									.css("width", msg.data.toFixed(2) + "%");
+								break;
+							case "slide":
+								$result.append(msg.data);
+								break;
+							case "pptx-thumb":
+								$("#pptx-thumb").attr("src", "data:image/jpeg;base64," + msg.data);
+								break;
+							case "ExecutionTime":
+								$("#info_block").html("Execution Time: " + msg.data + " (ms)");
+								break;
+							case "WARN":
+								console.warn('Worker: ', msg.data);
+								break;
+							case "ERROR":
+								console.error('Worker: ', msg.data);
+								$("#error_block").text(msg.data);
+								break;
+							case "DEBUG":
+								console.debug('Worker: ', msg.data);
+								break;
+							case "INFO":
+							default:
+								console.info('Worker: ', msg.data);
+								//$("#info_block").html($("#info_block").html() + "<br><br>" + msg.data);
+						}
+						
+					}, false);
+					
+					worker.postMessage(e.target.result);
+					
+				}
+			})(fileName);
+			reader.readAsArrayBuffer(fileName);
+			
+		});
+		
+	} else {
+		
+		alert("Browser don't support Web Worker!");
+		
+	}
+	
+});
+</script>
 
 </body>
 </html>
