@@ -33,7 +33,8 @@ onmessage = function(e) {
 	var slideSize = getSlideSize(zip);
 	themeContent = loadTheme(zip);
 	
-	for (var i=0; i<filesInfo["slides"].length; i++) {
+	var numOfSlides = filesInfo["slides"].length;
+	for (var i=0; i<numOfSlides; i++) {
 		var filename = filesInfo["slides"][i];
 		var slideHtml = processSingleSlide(zip, filename, i, slideSize);
 		self.postMessage({
@@ -42,7 +43,7 @@ onmessage = function(e) {
 		});
 		self.postMessage({
 			"type": "progress-update",
-			"data": (i + 1) * 100 / filesInfo["slides"].length
+			"data": (i + 1) * 100 / numOfSlides
 		});
 	}
 	
@@ -820,16 +821,24 @@ function getTextByPathStr(node, pathStr) {
  * @param {string Array} path
  */
 function getTextByPathList(node, path) {
+
 	if (path.constructor !== Array) {
 		throw Error("Error of path type! path is not array.");
 	}
-	if (node === undefined || path.length <= 0) {
+	
+	if (node === undefined) {
 		return undefined;
-	} else if (path.length == 1) {
-		return node[path[0]];
-	} else {
-		return getTextByPathList(node[path[0]], path.slice(1));
 	}
+	
+	var l = path.length;
+	for (var i=0; i<l; i++) {
+		node = node[path[i]];
+		if (node === undefined) {
+			return undefined;
+		}
+	}
+	
+	return node;
 }
 
 /**
