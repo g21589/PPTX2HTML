@@ -13,7 +13,7 @@ var themeContent = null;
 
 var titleFontSize = 42;
 var bodyFontSize = 20;
-var otherFontSize = 18;
+var otherFontSize = 16;
 
 onmessage = function(e) {
 	
@@ -225,9 +225,10 @@ function indexNodes(content) {
 		
 		if (targetNode.constructor === Array) {
 			for (var i=0; i<targetNode.length; i++) {
-				var id = getTextByPathList(targetNode[i], ["p:nvSpPr", "p:cNvPr", "attrs", "id"]);
-				var idx = getTextByPathList(targetNode[i], ["p:nvSpPr", "p:nvPr", "p:ph", "attrs", "idx"]);
-				var type = getTextByPathList(targetNode[i], ["p:nvSpPr", "p:nvPr", "p:ph", "attrs", "type"]);
+				var nvSpPrNode = targetNode[i]["p:nvSpPr"];
+				var id = getTextByPathList(nvSpPrNode, ["p:cNvPr", "attrs", "id"]);
+				var idx = getTextByPathList(nvSpPrNode, ["p:nvPr", "p:ph", "attrs", "idx"]);
+				var type = getTextByPathList(nvSpPrNode, ["p:nvPr", "p:ph", "attrs", "type"]);
 				
 				if (id !== undefined) {
 					idTable[id] = targetNode[i];
@@ -240,9 +241,10 @@ function indexNodes(content) {
 				}
 			}
 		} else {
-			var id = getTextByPathList(targetNode, ["p:nvSpPr", "p:cNvPr", "attrs", "id"]);
-			var idx = getTextByPathList(targetNode, ["p:nvSpPr", "p:nvPr", "p:ph", "attrs", "idx"]);
-			var type = getTextByPathList(targetNode[i], ["p:nvSpPr", "p:nvPr", "p:ph", "attrs", "type"]);
+			var nvSpPrNode = targetNode["p:nvSpPr"];
+			var id = getTextByPathList(nvSpPrNode, ["p:cNvPr", "attrs", "id"]);
+			var idx = getTextByPathList(nvSpPrNode, ["p:nvPr", "p:ph", "attrs", "idx"]);
+			var type = getTextByPathList(nvSpPrNode, ["p:nvPr", "p:ph", "attrs", "type"]);
 			
 			if (id !== undefined) {
 				idTable[id] = targetNode;
@@ -325,8 +327,6 @@ function processSpNode(node, warpObj) {
 	
 	if (type !== undefined) {
 		if (idx !== undefined) {
-			//slideLayoutSpNode = warpObj["slideLayoutTables"]["idxTable"][idx];
-			//slideMasterSpNode = warpObj["slideMasterTables"]["idxTable"][idx];
 			slideLayoutSpNode = warpObj["slideLayoutTables"]["typeTable"][type];
 			slideMasterSpNode = warpObj["slideMasterTables"]["typeTable"][type];
 		} else {
@@ -352,27 +352,81 @@ function processSpNode(node, warpObj) {
 	debug( {id, name, idx, type} );
 	//debug( JSON.stringify( node ) );
 	
-	var text = "";
 	var xfrmList = ["p:spPr", "a:xfrm"];
+	var slideXfrmNode = getTextByPathList(node, xfrmList);
+	var slideLayoutXfrmNode = getTextByPathList(slideLayoutSpNode, xfrmList);
+	var slideMasterXfrmNode = getTextByPathList(slideMasterSpNode, xfrmList);
 	
-	text += "<div class='block content " + getVerticalAlign(node, slideLayoutSpNode, slideMasterSpNode, type) +
-			"' _id='" + id + "' _idx='" + idx + "' _type='" + type + "' _name='" + name +
-			"' style='" + 
-				getPosition(getTextByPathList(node, xfrmList), getTextByPathList(slideLayoutSpNode, xfrmList), getTextByPathList(slideMasterSpNode, xfrmList)) + 
-				getSize(getTextByPathList(node, xfrmList), getTextByPathList(slideLayoutSpNode, xfrmList), getTextByPathList(slideMasterSpNode, xfrmList)) + 
-				getBorder(node) +
-				getFill(node) +
-			"'>";
+	var result = "";
+	var svgMode = node["p:style"] !== undefined;
 	
-	// Text
-	if (node["p:txBody"] === undefined) {
-		return text;
+	if (svgMode) {
+		
+		var off = slideXfrmNode["a:off"]["attrs"];
+		var x = parseInt(off["x"]) * 96 / 914400;
+		var y = parseInt(off["y"]) * 96 / 914400;
+		
+		var ext = slideXfrmNode["a:ext"]["attrs"];
+		var w = parseInt(ext["cx"]) * 96 / 914400;
+		var h = parseInt(ext["cy"]) * 96 / 914400;
+		
+		result += "<svg class='drawing' _id='" + id + "' _idx='" + idx + "' _type='" + type + "' _name='" + name +
+				"' style='" + 
+					getPosition(slideXfrmNode, undefined, undefined) + 
+					getSize(slideXfrmNode, undefined, undefined) +
+				"'>";
+		
+		// Fill Color
+		var schemeClr = "a:" + getTextByPathList(node, ["p:style", "a:fillRef", "a:schemeClr", "attrs", "val"]);
+		var fillColor = getTextByPathList(themeContent, ["a:theme", "a:themeElements", "a:clrScheme", schemeClr, "a:srgbClr", "attrs", "val"]);
+		if (fillColor === undefined) {
+			fillColor = "FFF";
+		}
+		fillColor = "#" + fillColor;
+		
+		// Border Color
+		schemeClr = "a:" + getTextByPathList(node, ["p:style", "a:lnRef", "a:schemeClr", "attrs", "val"]);
+		var borderColor = getTextByPathList(themeContent, ["a:theme", "a:themeElements", "a:clrScheme", schemeClr, "a:srgbClr", "attrs", "val"]);
+		if (borderColor === undefined) {
+			borderColor = "FFF";
+		}
+		borderColor = "#" + borderColor;
+		
+		switch ( getTextByPathList(node, ["p:spPr", "a:prstGeom", "attrs", "prst"]) ) {
+			case "rect":
+				result += "<rect x='0' y='0' width='" + w + "' height='" + h + "' fill='" + fillColor + "' stroke='" + borderColor + "' stroke-width='1pt' />";
+				break;
+			case "ellipse":
+				result += "<ellipse cx='" + (w / 2) + "' cy='" + (h / 2) + "' rx='" + (w / 2) + "' ry='" + (h / 2) + "' fill='" + fillColor + "' stroke='" + borderColor + "' stroke-width='1pt' />";
+				break;
+			case "roundRect":
+				result += "<rect x='0' y='0' width='" + w + "' height='" + h + "' rx='15' ry='15' fill='" + fillColor + "' stroke='" + borderColor + "' stroke-width='1pt' />";
+				break;
+			default:
+		}
+		
+		result += "</svg>";
+		
+	} else {
+	
+		result += "<div class='block content " + getVerticalAlign(node, slideLayoutSpNode, slideMasterSpNode, type) +
+				"' _id='" + id + "' _idx='" + idx + "' _type='" + type + "' _name='" + name +
+				"' style='" + 
+					getPosition(slideXfrmNode, slideLayoutXfrmNode, slideMasterXfrmNode) + 
+					getSize(slideXfrmNode, slideLayoutXfrmNode, slideMasterXfrmNode) + 
+					getBorder(node) +
+					getFill(node) +
+				"'>";
+		
+		// TextBody
+		if (node["p:txBody"] !== undefined) {
+			result += genTextBody(node["p:txBody"], slideLayoutSpNode, slideMasterSpNode, type);
+		}
+		result += "</div>";
+		
 	}
 	
-	text += genTextBody(node["p:txBody"], slideLayoutSpNode, slideMasterSpNode, type);
-	
-	text += "</div>";
-	return text;
+	return result;
 }
 
 function processPicNode(node, warpObj) {
@@ -477,15 +531,15 @@ function genTextBody(textBodyNode, slideLayoutSpNode, slideMasterSpNode, type) {
 			text += genBuChar(pNode);
 			if (rNode === undefined) {
 				// without r
-				text += genSpanElement(pNode, slideLayoutSpNode, slideMasterSpNode);
+				text += genSpanElement(pNode, slideLayoutSpNode, slideMasterSpNode, type);
 			} else if (rNode.constructor === Array) {
 				// with multi r
 				for (var j=0; j<rNode.length; j++) {
-					text += genSpanElement(rNode[j], slideLayoutSpNode, slideMasterSpNode);
+					text += genSpanElement(rNode[j], slideLayoutSpNode, slideMasterSpNode, type);
 				}
 			} else {
 				// with one r
-				text += genSpanElement(rNode, slideLayoutSpNode, slideMasterSpNode);
+				text += genSpanElement(rNode, slideLayoutSpNode, slideMasterSpNode, type);
 			}
 			text += "</div>";
 		}
@@ -497,15 +551,15 @@ function genTextBody(textBodyNode, slideLayoutSpNode, slideMasterSpNode, type) {
 		text += genBuChar(pNode);
 		if (rNode === undefined) {
 			// without r
-			text += genSpanElement(pNode, slideLayoutSpNode, slideMasterSpNode);
+			text += genSpanElement(pNode, slideLayoutSpNode, slideMasterSpNode, type);
 		} else if (rNode.constructor === Array) {
 			// with multi r
 			for (var j=0; j<rNode.length; j++) {
-				text += genSpanElement(rNode[j], slideLayoutSpNode, slideMasterSpNode);
+				text += genSpanElement(rNode[j], slideLayoutSpNode, slideMasterSpNode, type);
 			}
 		} else {
 			// with one r
-			text += genSpanElement(rNode, slideLayoutSpNode, slideMasterSpNode);
+			text += genSpanElement(rNode, slideLayoutSpNode, slideMasterSpNode, type);
 		}
 		text += "</div>";
 	}
@@ -538,24 +592,24 @@ function genBuChar(node) {
 	return "";
 }
 
-function genSpanElement(node, slideLayoutSpNode, slideMasterSpNode) {
+function genSpanElement(node, slideLayoutSpNode, slideMasterSpNode, type) {
 	
 	var text = node["a:t"];
 	if (typeof text !== 'string') {
 		text = getTextByPathList(node, ["a:fld", "a:t"]);
 		if (typeof text !== 'string') {
-			text = " ";
+			text = "&nbsp;";
 			//debug("XXX: " + JSON.stringify(node));
 		}
 	}
 	
-	return "<span style='color: " + getFontColor(node) + 
-				"; font-size: " + getFontSize(node, slideLayoutSpNode, slideMasterSpNode, null) + 
+	return "<span class='text-block' style='color: " + getFontColor(node) + 
+				"; font-size: " + getFontSize(node, slideLayoutSpNode, slideMasterSpNode, type) + 
 				"; font-family: " + getFontType(node) + 
 				"; font-weight: " + getFontBold(node) + 
 				"; font-style: " + getFontItalic(node) + 
 				"; text-decoration: " + getFontDecoration(node) + 
-				";'>" + text + "</span>";
+				";'>" + text.replace(/\s/i, "&nbsp;") + "</span>";
 }
 
 function getPosition(slideSpNode, slideLayoutSpNode, slideMasterSpNode) {

@@ -100,6 +100,10 @@ section div.down-right {
 	align-items: flex-end;
 }
 
+section span.text-block {
+	display: inline-block;
+}
+
 li.slide {
 	margin: 10px 0px;
 	font-size: 18px;
