@@ -124,6 +124,8 @@ function tXml(S) {
     return simplefy(parseChildren());
 }
 
+var order = 1;
+
 function simplefy(children) {
     var out = {};
     
@@ -144,11 +146,19 @@ function simplefy(children) {
 		
         if (typeof child == 'object') {
             var kids = simplefy(child.children);
-            out[child.tagName].push(kids);
-            if (child.attrs) {
+			if (child.attrs) {
                 kids.attrs = child.attrs;
             }
+			//if (kids["attrs"] === undefined) {
+			//	kids["attrs"] = {};
+			//}
+			//kids.attrs.order = order;
+            out[child.tagName].push(kids);
         } else {
+			//if (child["attrs"] === undefined) {
+			//	child["attrs"] = {};
+			//}
+			//child.attrs.order = order;
             out[child.tagName].push(child);
         }
 		
@@ -160,5 +170,6 @@ function simplefy(children) {
         }
     }
     
+	order++;
     return out;
 };

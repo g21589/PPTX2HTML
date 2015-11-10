@@ -259,7 +259,7 @@ function indexNodes(content) {
 		
 	}
 	
-	return {idTable, idxTable, typeTable};
+	return {"idTable": idTable, "idxTable": idxTable, "typeTable": typeTable};
 }
 
 function processNodesInSlide(nodeKey, nodeValue, warpObj, depth) {
@@ -349,7 +349,7 @@ function processSpNode(node, warpObj) {
 		}
 	}
 	
-	debug( {id, name, idx, type} );
+	debug( {"id": id, "name": name, "idx": idx, "type": type} );
 	//debug( JSON.stringify( node ) );
 	
 	var xfrmList = ["p:spPr", "a:xfrm"];
@@ -406,6 +406,19 @@ function processSpNode(node, warpObj) {
 		}
 		
 		result += "</svg>";
+		
+		result += "<div class='block content " + getVerticalAlign(node, slideLayoutSpNode, slideMasterSpNode, type) +
+				"' _id='" + id + "' _idx='" + idx + "' _type='" + type + "' _name='" + name +
+				"' style='" + 
+					getPosition(slideXfrmNode, slideLayoutXfrmNode, slideMasterXfrmNode) + 
+					getSize(slideXfrmNode, slideLayoutXfrmNode, slideMasterXfrmNode) + 
+				"'>";
+		
+		// TextBody
+		if (node["p:txBody"] !== undefined) {
+			result += genTextBody(node["p:txBody"], slideLayoutSpNode, slideMasterSpNode, type);
+		}
+		result += "</div>";
 		
 	} else {
 	
@@ -758,8 +771,8 @@ function getBorder(node) {
 	
 	// border width: 1pt = 12700, default = 0.75pt
 	var borderWidth = parseInt(getTextByPathList(lineNode, ["attrs", "w"])) / 12700;
-	if (isNaN(borderWidth)) {
-		cssText += "0.75pt ";
+	if (isNaN(borderWidth) || borderWidth < 1) {
+		cssText += "1pt ";
 	} else {
 		cssText += borderWidth + "pt ";
 	}
