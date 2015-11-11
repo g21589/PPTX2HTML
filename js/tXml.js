@@ -1,3 +1,5 @@
+var _order = 1;
+
 function tXml(S) {
 	
     "use strict";
@@ -121,55 +123,58 @@ function tXml(S) {
         return children;
     }
     
+	_order = 1;
     return simplefy(parseChildren());
 }
 
-var order = 1;
-
 function simplefy(children) {
-    var out = {};
+    var node = {};
     
 	if (children === undefined) {
 		return {};
 	}
 	
+	// Text node (e.g. <t>This is text.</t>)
     if (children.length === 1 && typeof children[0] == 'string') {
         return children[0];
 	}
 
     // map each object
-    children.forEach(function(child) {
+    children.forEach(function (child) {
 
-        if (!out[child.tagName]) {
-            out[child.tagName] = [];
+        if (!node[child.tagName]) {
+            node[child.tagName] = [];
 		}
-		
-        if (typeof child == 'object') {
+
+        if (typeof child === 'object') {
             var kids = simplefy(child.children);
 			if (child.attrs) {
                 kids.attrs = child.attrs;
             }
-			//if (kids["attrs"] === undefined) {
-			//	kids["attrs"] = {};
-			//}
-			//kids.attrs.order = order;
-            out[child.tagName].push(kids);
-        } else {
+			
+			if (kids["attrs"] === undefined) {
+				kids["attrs"] = {"order": _order};
+			} else {
+				kids["attrs"]["order"] = _order;
+			}
+			_order++;
+            node[child.tagName].push(kids);
+        }/* else {
 			//if (child["attrs"] === undefined) {
 			//	child["attrs"] = {};
 			//}
 			//child.attrs.order = order;
-            out[child.tagName].push(child);
+			console.log(child);
+            node[child.tagName].push(child);
         }
-		
+		*/
     });
     
-    for (var i in out) {
-        if (out[i].length == 1) {
-            out[i] = out[i][0];
+    for (var i in node) {
+        if (node[i].length == 1) {
+            node[i] = node[i][0];
         }
     }
-    
-	order++;
-    return out;
+	
+    return node;
 };

@@ -277,7 +277,8 @@ function processNodesInSlide(nodeKey, nodeValue, warpObj, depth) {
 			result += processGraphicFrameNode(nodeValue, warpObj);
 			break;
 		case "p:grpSp":	// 群組
-			result += "<div class='block group'";			
+			var order = nodeValue["attrs"]["order"];
+			result += "<div class='block group' style='z-index: " + order + ";";			
 			for (var nodeKey in nodeValue) {
 				if (nodeValue[nodeKey].constructor === Array) {
 					for (var i=0; i<nodeValue[nodeKey].length; i++) {
@@ -305,7 +306,7 @@ function processNodesInSlide(nodeKey, nodeValue, warpObj, depth) {
 				var cy = parseInt(xfrmNode["a:ext"]["attrs"]["cy"]) * 96 / 914400;
 				var chcx = parseInt(xfrmNode["a:chExt"]["attrs"]["cx"]) * 96 / 914400;
 				var chcy = parseInt(xfrmNode["a:chExt"]["attrs"]["cy"]) * 96 / 914400;
-				result = " style='top: " + (y - chy) + "px; left: " + (x - chx) + "px; width: " + (cx - chcx) + "px; height: " + (cy - chcy) + "px;'>";
+				result = " top: " + (y - chy) + "px; left: " + (x - chx) + "px; width: " + (cx - chcx) + "px; height: " + (cy - chcy) + "px;'>";
 			}
 			break;
 		default:
@@ -321,6 +322,7 @@ function processSpNode(node, warpObj) {
 	var name = node["p:nvSpPr"]["p:cNvSpPr"]["attrs"]["name"];
 	var idx = (node["p:nvSpPr"]["p:nvPr"]["p:ph"] === undefined) ? undefined : node["p:nvSpPr"]["p:nvPr"]["p:ph"]["attrs"]["idx"];
 	var type = (node["p:nvSpPr"]["p:nvPr"]["p:ph"] === undefined) ? undefined : node["p:nvSpPr"]["p:nvPr"]["p:ph"]["attrs"]["type"];
+	var order = node["attrs"]["order"];
 	
 	var slideLayoutSpNode = undefined;
 	var slideMasterSpNode = undefined;
@@ -349,7 +351,7 @@ function processSpNode(node, warpObj) {
 		}
 	}
 	
-	debug( {"id": id, "name": name, "idx": idx, "type": type} );
+	debug( {"id": id, "name": name, "idx": idx, "type": type, "order": order} );
 	//debug( JSON.stringify( node ) );
 	
 	var xfrmList = ["p:spPr", "a:xfrm"];
@@ -374,6 +376,7 @@ function processSpNode(node, warpObj) {
 				"' style='" + 
 					getPosition(slideXfrmNode, undefined, undefined) + 
 					getSize(slideXfrmNode, undefined, undefined) +
+					" z-index: " + order + ";" +
 				"'>";
 		
 		// Fill Color
@@ -412,6 +415,7 @@ function processSpNode(node, warpObj) {
 				"' style='" + 
 					getPosition(slideXfrmNode, slideLayoutXfrmNode, slideMasterXfrmNode) + 
 					getSize(slideXfrmNode, slideLayoutXfrmNode, slideMasterXfrmNode) + 
+					" z-index: " + order + ";" +
 				"'>";
 		
 		// TextBody
@@ -429,6 +433,7 @@ function processSpNode(node, warpObj) {
 					getSize(slideXfrmNode, slideLayoutXfrmNode, slideMasterXfrmNode) + 
 					getBorder(node) +
 					getFill(node) +
+					" z-index: " + order + ";" +
 				"'>";
 		
 		// TextBody
@@ -445,6 +450,8 @@ function processSpNode(node, warpObj) {
 function processPicNode(node, warpObj) {
 	
 	//debug( JSON.stringify( node ) );
+	
+	var order = node["attrs"]["order"];
 	
 	var rid = node["p:blipFill"]["a:blip"]["attrs"]["r:embed"];
 	var imgName = warpObj["slideResObj"][rid]["target"];
@@ -471,7 +478,8 @@ function processPicNode(node, warpObj) {
 			mimeType = "image/*";
 	}
 	return "<div class='block content' style='" + getPosition(xfrmNode, undefined, undefined) + getSize(xfrmNode, undefined, undefined) +
-			   "'><img src=\"data:" + mimeType + ";base64," + base64ArrayBuffer(imgArrayBuffer) + "\" style='width: 100%; height: 100%'/></div>";
+			" z-index: " + order + ";" +
+			"'><img src=\"data:" + mimeType + ";base64," + base64ArrayBuffer(imgArrayBuffer) + "\" style='width: 100%; height: 100%'/></div>";
 }
 
 function processGraphicFrameNode(node, warpObj) {
