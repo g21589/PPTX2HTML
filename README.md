@@ -3,12 +3,13 @@ PPTX2HTML
 [![MIT License][license-image]][license-url]
 
 Convert MS-PPTX file to HTML (Future support Reveal.js).  
+Support Chrome, Firefox, and IE>=10.  
 Here is the [Online DEMO] page.
 
 Version
 ----
 
-0.1.2 (Beta Test)
+0.2.0 (Beta Test)
 
 License
 ----
