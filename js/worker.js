@@ -270,7 +270,7 @@ function processNodesInSlide(nodeKey, nodeValue, warpObj, depth) {
 		case "p:sp":	// Shape, Text
 			result += processSpNode(nodeValue, warpObj);
 			break;
-		case "p:cxnSp":
+		case "p:cxnSp":	// Shape, Text (with connection)
 			result += processCxnSpNode(nodeValue, warpObj);
 			break;
 		case "p:pic":	// Picture
@@ -423,16 +423,7 @@ function genShape(node, slideLayoutSpNode, slideMasterSpNode, id, name, idx, typ
 		// Fill Color
 		var fillColor = getFill(node, true);
 		
-		// Border Color
-		/*
-		var schemeClr = "a:" + getTextByPathList(node, ["p:style", "a:lnRef", "a:schemeClr", "attrs", "val"]);
-		var borderColor = getTextByPathList(themeContent, ["a:theme", "a:themeElements", "a:clrScheme", schemeClr, "a:srgbClr", "attrs", "val"]);
-		if (borderColor === undefined) {
-			borderColor = "FFF";
-		}
-		borderColor = "#" + borderColor;
-		*/
-		
+		// Border Color		
 		var border = getBorder(node, true);
 		
 		var headEndNodeAttrs = getTextByPathList(node, ["p:spPr", "a:ln", "a:headEnd", "attrs"]);
@@ -715,7 +706,8 @@ function genSpanElement(node, slideLayoutSpNode, slideMasterSpNode, type) {
 				"; font-family: " + getFontType(node) + 
 				"; font-weight: " + getFontBold(node) + 
 				"; font-style: " + getFontItalic(node) + 
-				"; text-decoration: " + getFontDecoration(node) + 
+				"; text-decoration: " + getFontDecoration(node) +
+				"; vertical-align: " + getTextVerticalAlign(node) + 
 				";'>" + text.replace(/\s/i, "&nbsp;") + "</span>";
 }
 
@@ -839,6 +831,11 @@ function getFontSize(node, slideLayoutSpNode, slideMasterSpNode, type) {
 		}
 	}
 	
+	var baseline = getTextByPathList(node, ["a:rPr", "attrs", "baseline"]);
+	if (baseline !== undefined && !isNaN(fontSize)) {
+		fontSize -= 10;
+	}
+	
 	return isNaN(fontSize) ? "inherit" : (fontSize + "pt");
 }
 
@@ -852,6 +849,16 @@ function getFontItalic(node) {
 
 function getFontDecoration(node) {
 	return (node["a:rPr"] !== undefined && node["a:rPr"]["attrs"]["u"] === "sng") ? "underline" : "initial";
+}
+
+function getTextVerticalAlign(node) {
+	var baseline = getTextByPathList(node, ["a:rPr", "attrs", "baseline"]);
+	if (baseline === undefined) {
+		return "";
+	} else {
+		baseline = parseInt(baseline) / 1000;
+		return baseline + "%";
+	}
 }
 
 function getBorder(node, isSvgMode) {
@@ -873,21 +880,24 @@ function getBorder(node, isSvgMode) {
 	
 	// Border color
 	var borderColor = getTextByPathList(lineNode, ["a:solidFill", "a:srgbClr", "attrs", "val"]);
-	//borderColor = ;
-	//if (borderColor === undefined) {
-	//	borderColor = "000";
-	//}
-	//var borderColor = "000";
-	//cssText += "#" + borderColor + " ";
 	
 	// 2. drawingML namespace
-	//$lineNode = $node.find("style").find("lnRef");
 	if (borderColor === undefined) {
-		var schemeClr = "a:" + getTextByPathList(node, ["p:style", "a:lnRef", "a:schemeClr", "attrs", "val"]);
+		var schemeClrNode = getTextByPathList(node, ["p:style", "a:lnRef", "a:schemeClr"]);
+		var schemeClr = "a:" + getTextByPathList(schemeClrNode, ["attrs", "val"]);
 		var borderColor = getTextByPathList(themeContent, ["a:theme", "a:themeElements", "a:clrScheme", schemeClr, "a:srgbClr", "attrs", "val"]);
 		if (borderColor === undefined) {
 			borderColor = "FFF";
-		}	
+		}
+		
+		var shade = getTextByPathList(schemeClrNode, ["a:shade", "attrs", "val"]);
+		if (shade !== undefined) {
+			shade = parseInt(shade) / 100000;
+			var color = new colz.Color("#" + borderColor);
+			color.setLum(color.hsl.l * shade);
+			borderColor = color.hex.replace("#", "");
+		}
+		
 	}
 	borderColor = "#" + borderColor;
 	
