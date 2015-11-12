@@ -318,6 +318,18 @@ function processNodesInSlide(nodeKey, nodeValue, warpObj, depth) {
 
 function processSpNode(node, warpObj) {
 	
+	/*
+	 *  958	<xsd:complexType name="CT_GvmlShape">
+	 *  959   <xsd:sequence>
+	 *  960     <xsd:element name="nvSpPr" type="CT_GvmlShapeNonVisual"     minOccurs="1" maxOccurs="1"/>
+	 *  961     <xsd:element name="spPr"   type="CT_ShapeProperties"        minOccurs="1" maxOccurs="1"/>
+	 *  962     <xsd:element name="txSp"   type="CT_GvmlTextShape"          minOccurs="0" maxOccurs="1"/>
+	 *  963     <xsd:element name="style"  type="CT_ShapeStyle"             minOccurs="0" maxOccurs="1"/>
+	 *  964     <xsd:element name="extLst" type="CT_OfficeArtExtensionList" minOccurs="0" maxOccurs="1"/>
+	 *  965   </xsd:sequence>
+	 *  966 </xsd:complexType>
+	 */
+	
 	var id = node["p:nvSpPr"]["p:cNvSpPr"]["attrs"]["id"];
 	var name = node["p:nvSpPr"]["p:cNvSpPr"]["attrs"]["name"];
 	var idx = (node["p:nvSpPr"]["p:nvPr"]["p:ph"] === undefined) ? undefined : node["p:nvSpPr"]["p:nvPr"]["p:ph"]["attrs"]["idx"];
@@ -362,6 +374,8 @@ function processSpNode(node, warpObj) {
 	var result = "";
 	var svgMode = node["p:style"] !== undefined;
 	
+	// TODO: 圖形統一用SVG渲染
+	// 優先權: p:spPr(a:solidFill, a:ln, ...), p:style(a:fillRef, a:lnRef, ...)
 	if (svgMode) {
 		
 		var off = slideXfrmNode["a:off"]["attrs"];
@@ -380,30 +394,28 @@ function processSpNode(node, warpObj) {
 				"'>";
 		
 		// Fill Color
-		var schemeClr = "a:" + getTextByPathList(node, ["p:style", "a:fillRef", "a:schemeClr", "attrs", "val"]);
-		var fillColor = getTextByPathList(themeContent, ["a:theme", "a:themeElements", "a:clrScheme", schemeClr, "a:srgbClr", "attrs", "val"]);
-		if (fillColor === undefined) {
-			fillColor = "FFF";
-		}
-		fillColor = "#" + fillColor;
+		var fillColor = getFill(node, true);
 		
 		// Border Color
-		schemeClr = "a:" + getTextByPathList(node, ["p:style", "a:lnRef", "a:schemeClr", "attrs", "val"]);
+		/*
+		var schemeClr = "a:" + getTextByPathList(node, ["p:style", "a:lnRef", "a:schemeClr", "attrs", "val"]);
 		var borderColor = getTextByPathList(themeContent, ["a:theme", "a:themeElements", "a:clrScheme", schemeClr, "a:srgbClr", "attrs", "val"]);
 		if (borderColor === undefined) {
 			borderColor = "FFF";
 		}
 		borderColor = "#" + borderColor;
+		*/
+		var border = getBorder(node, true);
 		
 		switch ( getTextByPathList(node, ["p:spPr", "a:prstGeom", "attrs", "prst"]) ) {
 			case "rect":
-				result += "<rect x='0' y='0' width='" + w + "' height='" + h + "' fill='" + fillColor + "' stroke='" + borderColor + "' stroke-width='1pt' />";
+				result += "<rect x='0' y='0' width='" + w + "' height='" + h + "' fill='" + fillColor + "' stroke='" + border.color + "' stroke-width='" + border.width + "' />";
 				break;
 			case "ellipse":
-				result += "<ellipse cx='" + (w / 2) + "' cy='" + (h / 2) + "' rx='" + (w / 2) + "' ry='" + (h / 2) + "' fill='" + fillColor + "' stroke='" + borderColor + "' stroke-width='1pt' />";
+				result += "<ellipse cx='" + (w / 2) + "' cy='" + (h / 2) + "' rx='" + (w / 2) + "' ry='" + (h / 2) + "' fill='" + fillColor + "' stroke='" + border.color + "' stroke-width='" + border.width + "' />";
 				break;
 			case "roundRect":
-				result += "<rect x='0' y='0' width='" + w + "' height='" + h + "' rx='15' ry='15' fill='" + fillColor + "' stroke='" + borderColor + "' stroke-width='1pt' />";
+				result += "<rect x='0' y='0' width='" + w + "' height='" + h + "' rx='15' ry='15' fill='" + fillColor + "' stroke='" + border.color + "' stroke-width='" + border.width + "' />";
 				break;
 			default:
 		}
@@ -431,8 +443,8 @@ function processSpNode(node, warpObj) {
 				"' style='" + 
 					getPosition(slideXfrmNode, slideLayoutXfrmNode, slideMasterXfrmNode) + 
 					getSize(slideXfrmNode, slideLayoutXfrmNode, slideMasterXfrmNode) + 
-					getBorder(node) +
-					getFill(node) +
+					getBorder(node, false) +
+					getFill(node, false) +
 					" z-index: " + order + ";" +
 				"'>";
 		
@@ -533,6 +545,27 @@ function processGraphicFrameNode(node, warpObj) {
 	}
 	
 	return result;
+}
+
+function processSpPrNode(node, warpObj) {
+	
+	/*
+	 * 2241 <xsd:complexType name="CT_ShapeProperties">
+	 * 2242   <xsd:sequence>
+	 * 2243     <xsd:element name="xfrm" type="CT_Transform2D"  minOccurs="0" maxOccurs="1"/>
+	 * 2244     <xsd:group   ref="EG_Geometry"                  minOccurs="0" maxOccurs="1"/>
+	 * 2245     <xsd:group   ref="EG_FillProperties"            minOccurs="0" maxOccurs="1"/>
+	 * 2246     <xsd:element name="ln" type="CT_LineProperties" minOccurs="0" maxOccurs="1"/>
+	 * 2247     <xsd:group   ref="EG_EffectProperties"          minOccurs="0" maxOccurs="1"/>
+	 * 2248     <xsd:element name="scene3d" type="CT_Scene3D"   minOccurs="0" maxOccurs="1"/>
+	 * 2249     <xsd:element name="sp3d" type="CT_Shape3D"      minOccurs="0" maxOccurs="1"/>
+	 * 2250     <xsd:element name="extLst" type="CT_OfficeArtExtensionList" minOccurs="0" maxOccurs="1"/>
+	 * 2251   </xsd:sequence>
+	 * 2252   <xsd:attribute name="bwMode" type="ST_BlackWhiteMode" use="optional"/>
+	 * 2253 </xsd:complexType>
+	 */
+	
+	// TODO:
 }
 
 function genTextBody(textBodyNode, slideLayoutSpNode, slideMasterSpNode, type) {
@@ -768,7 +801,7 @@ function getFontDecoration(node) {
 	return (node["a:rPr"] !== undefined && node["a:rPr"]["attrs"]["u"] === "sng") ? "underline" : "initial";
 }
 
-function getBorder(node) {
+function getBorder(node, isSvgMode) {
 	
 	//debug(JSON.stringify(node));
 	
@@ -777,7 +810,7 @@ function getBorder(node) {
 	// 1. presentationML
 	var lineNode = node["p:spPr"]["a:ln"];
 	
-	// border width: 1pt = 12700, default = 0.75pt
+	// Border width: 1pt = 12700, default = 0.75pt
 	var borderWidth = parseInt(getTextByPathList(lineNode, ["attrs", "w"])) / 12700;
 	if (isNaN(borderWidth) || borderWidth < 1) {
 		cssText += "1pt ";
@@ -785,17 +818,27 @@ function getBorder(node) {
 		cssText += borderWidth + "pt ";
 	}
 	
-	// border color
-	//var borderColor = $lineNode.find("solidFill").find("srgbClr").attr("val");
+	// Border color
+	var borderColor = getTextByPathList(lineNode, ["a:solidFill", "a:srgbClr", "attrs", "val"]);
+	//borderColor = ;
 	//if (borderColor === undefined) {
 	//	borderColor = "000";
 	//}
-	var borderColor = "000";
-	cssText += "#" + borderColor + " ";
+	//var borderColor = "000";
+	//cssText += "#" + borderColor + " ";
 	
 	// 2. drawingML namespace
 	//$lineNode = $node.find("style").find("lnRef");
+	if (borderColor === undefined) {
+		var schemeClr = "a:" + getTextByPathList(node, ["p:style", "a:lnRef", "a:schemeClr", "attrs", "val"]);
+		var borderColor = getTextByPathList(themeContent, ["a:theme", "a:themeElements", "a:clrScheme", schemeClr, "a:srgbClr", "attrs", "val"]);
+		if (borderColor === undefined) {
+			borderColor = "FFF";
+		}	
+	}
+	borderColor = "#" + borderColor;
 	
+	// Border type
 	var borderType = getTextByPathList(lineNode, ["a:prstDash", "attrs", "val"]);
 	switch (borderType) {
 		case "solid":
@@ -835,14 +878,26 @@ function getBorder(node) {
 			//cssText += "#000 solid";
 	}
 	
-	return cssText + ";";
+	if (isSvgMode) {
+		return {"color": borderColor, "width": borderWidth, "type": borderType};
+	} else {
+		return cssText + ";";
+	}
 }
 
-function getFill(node) {
+function getFill(node, isSvgMode) {
 	
 	// 1. presentationML
+	// p:spPr [a:noFill, solidFill, gradFill, blipFill, pattFill, grpFill]
 	// From slide
-	var fillColor = getTextByPathList(node, ["p:spPr", "a:solidFill", "a:srgbClr", "attrs", "val"]);
+	if (getTextByPathList(node, ["p:spPr", "a:noFill"]) !== undefined) {
+		return isSvgMode ? "none" : "background-color: initial;";
+	}
+	
+	var fillColor = undefined;
+	if (fillColor === undefined) {
+		fillColor = getTextByPathList(node, ["p:spPr", "a:solidFill", "a:srgbClr", "attrs", "val"]);
+	}
 	
 	// From theme
 	if (fillColor === undefined) {
@@ -873,9 +928,18 @@ function getFill(node) {
 		//console.log([lumMod, lumOff]);
 		fillColor = applyLumModify(fillColor, lumMod, lumOff);
 		
-		return "background-color: " + fillColor + ";";
-	} else {
-		return "";
+		if (isSvgMode) {
+			return fillColor;
+		} else {
+			return "background-color: " + fillColor + ";";
+		}
+	} else {		
+		if (isSvgMode) {
+			return "#FFF";
+		} else {
+			return "background-color: " + fillColor + ";";
+		}
+		
 	}
 	
 }
