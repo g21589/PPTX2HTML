@@ -177,6 +177,7 @@ function processSingleSlide(zip, sldFileName, index, slideSize) {
 	}
 	// Open slideMasterXX.xml
 	var slideMasterContent = readXmlFile(zip, masterFilename);
+	var slideMasterTextStyles = slideMasterContent["p:txStyles"];
 	var slideMasterTables = indexNodes(slideMasterContent);
 	//debug(slideMasterTables);
 	
@@ -188,7 +189,8 @@ function processSingleSlide(zip, sldFileName, index, slideSize) {
 		"zip": zip,
 		"slideLayoutTables": slideLayoutTables,
 		"slideMasterTables": slideMasterTables,
-		"slideResObj": slideResObj
+		"slideResObj": slideResObj,
+		"slideMasterTextStyles": slideMasterTextStyles
 	};
 	
 	var result = "<li class='slide'>" + sldFileName + "<section style='width:" + slideSize.width + "px; height:" + slideSize.height + "px;'>"
@@ -369,7 +371,7 @@ function processSpNode(node, warpObj) {
 	debug( {"id": id, "name": name, "idx": idx, "type": type, "order": order} );
 	//debug( JSON.stringify( node ) );
 	
-	return genShape(node, slideLayoutSpNode, slideMasterSpNode, id, name, idx, type, order);
+	return genShape(node, slideLayoutSpNode, slideMasterSpNode, id, name, idx, type, order, warpObj["slideMasterTextStyles"]);
 }
 
 function processCxnSpNode(node, warpObj) {
@@ -383,10 +385,10 @@ function processCxnSpNode(node, warpObj) {
 
 	debug( {"id": id, "name": name, "order": order} );
 	
-	return genShape(node, undefined, undefined, id, name, undefined, undefined, order);
+	return genShape(node, undefined, undefined, id, name, undefined, undefined, order, warpObj["slideMasterTextStyles"]);
 }
 
-function genShape(node, slideLayoutSpNode, slideMasterSpNode, id, name, idx, type, order) {
+function genShape(node, slideLayoutSpNode, slideMasterSpNode, id, name, idx, type, order, slideMasterTextStyles) {
 	
 	var xfrmList = ["p:spPr", "a:xfrm"];
 	var slideXfrmNode = getTextByPathList(node, xfrmList);
@@ -479,7 +481,7 @@ function genShape(node, slideLayoutSpNode, slideMasterSpNode, id, name, idx, typ
 		
 		// TextBody
 		if (node["p:txBody"] !== undefined) {
-			result += genTextBody(node["p:txBody"], slideLayoutSpNode, slideMasterSpNode, type);
+			result += genTextBody(node["p:txBody"], slideLayoutSpNode, slideMasterSpNode, type, slideMasterTextStyles);
 		}
 		result += "</div>";
 		
@@ -497,7 +499,7 @@ function genShape(node, slideLayoutSpNode, slideMasterSpNode, id, name, idx, typ
 		
 		// TextBody
 		if (node["p:txBody"] !== undefined) {
-			result += genTextBody(node["p:txBody"], slideLayoutSpNode, slideMasterSpNode, type);
+			result += genTextBody(node["p:txBody"], slideLayoutSpNode, slideMasterSpNode, type, slideMasterTextStyles);
 		}
 		result += "</div>";
 		
@@ -615,7 +617,7 @@ function processSpPrNode(node, warpObj) {
 	// TODO:
 }
 
-function genTextBody(textBodyNode, slideLayoutSpNode, slideMasterSpNode, type) {
+function genTextBody(textBodyNode, slideLayoutSpNode, slideMasterSpNode, type, slideMasterTextStyles) {
 	
 	var text = "";
 	
@@ -628,19 +630,19 @@ function genTextBody(textBodyNode, slideLayoutSpNode, slideMasterSpNode, type) {
 		for (var i=0; i<textBodyNode["a:p"].length; i++) {
 			var pNode = textBodyNode["a:p"][i];
 			var rNode = pNode["a:r"];
-			text += "<div class='" + getHorizontalAlign(pNode, slideLayoutSpNode, slideMasterSpNode, type) + "'>";
+			text += "<div class='" + getHorizontalAlign(pNode, slideLayoutSpNode, slideMasterSpNode, type, slideMasterTextStyles) + "'>";
 			text += genBuChar(pNode);
 			if (rNode === undefined) {
 				// without r
-				text += genSpanElement(pNode, slideLayoutSpNode, slideMasterSpNode, type);
+				text += genSpanElement(pNode, slideLayoutSpNode, slideMasterSpNode, type, slideMasterTextStyles);
 			} else if (rNode.constructor === Array) {
 				// with multi r
 				for (var j=0; j<rNode.length; j++) {
-					text += genSpanElement(rNode[j], slideLayoutSpNode, slideMasterSpNode, type);
+					text += genSpanElement(rNode[j], slideLayoutSpNode, slideMasterSpNode, type, slideMasterTextStyles);
 				}
 			} else {
 				// with one r
-				text += genSpanElement(rNode, slideLayoutSpNode, slideMasterSpNode, type);
+				text += genSpanElement(rNode, slideLayoutSpNode, slideMasterSpNode, type, slideMasterTextStyles);
 			}
 			text += "</div>";
 		}
@@ -648,19 +650,19 @@ function genTextBody(textBodyNode, slideLayoutSpNode, slideMasterSpNode, type) {
 		// one p
 		var pNode = textBodyNode["a:p"];
 		var rNode = pNode["a:r"];
-		text += "<div class='" + getHorizontalAlign(pNode, slideLayoutSpNode, slideMasterSpNode, type) + "'>";
+		text += "<div class='" + getHorizontalAlign(pNode, slideLayoutSpNode, slideMasterSpNode, type, slideMasterTextStyles) + "'>";
 		text += genBuChar(pNode);
 		if (rNode === undefined) {
 			// without r
-			text += genSpanElement(pNode, slideLayoutSpNode, slideMasterSpNode, type);
+			text += genSpanElement(pNode, slideLayoutSpNode, slideMasterSpNode, type, slideMasterTextStyles);
 		} else if (rNode.constructor === Array) {
 			// with multi r
 			for (var j=0; j<rNode.length; j++) {
-				text += genSpanElement(rNode[j], slideLayoutSpNode, slideMasterSpNode, type);
+				text += genSpanElement(rNode[j], slideLayoutSpNode, slideMasterSpNode, type, slideMasterTextStyles);
 			}
 		} else {
 			// with one r
-			text += genSpanElement(rNode, slideLayoutSpNode, slideMasterSpNode, type);
+			text += genSpanElement(rNode, slideLayoutSpNode, slideMasterSpNode, type, slideMasterTextStyles);
 		}
 		text += "</div>";
 	}
@@ -693,7 +695,7 @@ function genBuChar(node) {
 	return "";
 }
 
-function genSpanElement(node, slideLayoutSpNode, slideMasterSpNode, type) {
+function genSpanElement(node, slideLayoutSpNode, slideMasterSpNode, type, slideMasterTextStyles) {
 	
 	var text = node["a:t"];
 	if (typeof text !== 'string') {
@@ -704,13 +706,13 @@ function genSpanElement(node, slideLayoutSpNode, slideMasterSpNode, type) {
 		}
 	}
 	
-	return "<span class='text-block' style='color: " + getFontColor(node) + 
-				"; font-size: " + getFontSize(node, slideLayoutSpNode, slideMasterSpNode, type) + 
-				"; font-family: " + getFontType(node) + 
-				"; font-weight: " + getFontBold(node) + 
-				"; font-style: " + getFontItalic(node) + 
-				"; text-decoration: " + getFontDecoration(node) +
-				"; vertical-align: " + getTextVerticalAlign(node) + 
+	return "<span class='text-block' style='color: " + getFontColor(node, type, slideMasterTextStyles) + 
+				"; font-size: " + getFontSize(node, slideLayoutSpNode, slideMasterSpNode, type, slideMasterTextStyles) + 
+				"; font-family: " + getFontType(node, type, slideMasterTextStyles) + 
+				"; font-weight: " + getFontBold(node, type, slideMasterTextStyles) + 
+				"; font-style: " + getFontItalic(node, type, slideMasterTextStyles) + 
+				"; text-decoration: " + getFontDecoration(node, type, slideMasterTextStyles) +
+				"; vertical-align: " + getTextVerticalAlign(node, type, slideMasterTextStyles) + 
 				";'>" + text.replace(/\s/i, "&nbsp;") + "</span>";
 }
 
@@ -766,13 +768,24 @@ function getSize(slideSpNode, slideLayoutSpNode, slideMasterSpNode) {
 	
 }
 
-function getHorizontalAlign(node, slideLayoutSpNode, slideMasterSpNode, type) {
+function getHorizontalAlign(node, slideLayoutSpNode, slideMasterSpNode, type, slideMasterTextStyles) {
 	//debug(node);
 	var algn = getTextByPathList(node, ["a:pPr", "attrs", "algn"]);
 	if (algn === undefined) {
 		algn = getTextByPathList(slideLayoutSpNode, ["p:txBody", "a:p", "a:pPr", "attrs", "algn"]);
 		if (algn === undefined) {
 			algn = getTextByPathList(slideMasterSpNode, ["p:txBody", "a:p", "a:pPr", "attrs", "algn"]);
+			if (algn === undefined) {
+				switch (type) {
+					case "title":
+					case "subTitle":
+					case "ctrTitle":
+						algn = getTextByPathList(slideMasterTextStyles, ["p:titleStyle", "a:lvl1pPr", "attrs", "alng"]);
+						break;
+					default:
+						algn = getTextByPathList(slideMasterTextStyles, ["p:otherStyle", "a:lvl1pPr", "attrs", "alng"]);
+				}
+			}
 		}
 	}
 	// TODO:
@@ -786,7 +799,7 @@ function getHorizontalAlign(node, slideLayoutSpNode, slideMasterSpNode, type) {
 	return algn === "ctr" ? "h-mid" : algn === "r" ? "h-right" : "h-left";
 }
 
-function getVerticalAlign(node, slideLayoutSpNode, slideMasterSpNode, type) {
+function getVerticalAlign(node, slideLayoutSpNode, slideMasterSpNode, type, slideMasterTextStyles) {
 	
 	// 上中下對齊: X, <a:bodyPr anchor="ctr">, <a:bodyPr anchor="b">
 	var anchor = getTextByPathList(node, ["p:txBody", "a:bodyPr", "attrs", "anchor"]);
@@ -800,17 +813,17 @@ function getVerticalAlign(node, slideLayoutSpNode, slideMasterSpNode, type) {
 	return anchor === "ctr" ? "v-mid" : anchor === "b" ?  "v-down" : "v-up";
 }
 
-function getFontType(node) {
+function getFontType(node, type, slideMasterTextStyles) {
 	var typeface = getTextByPathList(node, ["a:rPr", "a:latin", "attrs", "typeface"]);
 	return (typeface === undefined) ? "inherit" : typeface;
 }
 
-function getFontColor(node) {
+function getFontColor(node, type, slideMasterTextStyles) {
 	var color = getTextByPathStr(node, "a:rPr a:solidFill a:srgbClr attrs val");
 	return (color === undefined) ? "#000" : "#" + color;
 }
 
-function getFontSize(node, slideLayoutSpNode, slideMasterSpNode, type) {
+function getFontSize(node, slideLayoutSpNode, slideMasterSpNode, type, slideMasterTextStyles) {
 	var fontSize = undefined;
 	if (node["a:rPr"] !== undefined) {
 		fontSize = parseInt(node["a:rPr"]["attrs"]["sz"]) / 100;
@@ -828,9 +841,9 @@ function getFontSize(node, slideLayoutSpNode, slideMasterSpNode, type) {
 	
 	if (isNaN(fontSize)) {
 		if (type == "title" || type == "subTitle" || type == "ctrTitle") {
-			fontSize = titleFontSize;
+			fontSize = parseInt(getTextByPathList(slideMasterTextStyles, ["p:titleStyle", "a:lvl1pPr", "a:defRPr", "attrs", "sz"]));
 		} else if (type === undefined) {
-			fontSize = otherFontSize;
+			fontSize = parseInt(getTextByPathList(slideMasterTextStyles, ["p:otherStyle", "a:lvl1pPr", "a:defRPr", "attrs", "sz"]));;
 		}
 	}
 	
@@ -842,19 +855,19 @@ function getFontSize(node, slideLayoutSpNode, slideMasterSpNode, type) {
 	return isNaN(fontSize) ? "inherit" : (fontSize + "pt");
 }
 
-function getFontBold(node) {
+function getFontBold(node, type, slideMasterTextStyles) {
 	return (node["a:rPr"] !== undefined && node["a:rPr"]["attrs"]["b"] === "1") ? "bold" : "initial";
 }
 
-function getFontItalic(node) {
+function getFontItalic(node, type, slideMasterTextStyles) {
 	return (node["a:rPr"] !== undefined && node["a:rPr"]["attrs"]["i"] === "1") ? "italic" : "normal";
 }
 
-function getFontDecoration(node) {
+function getFontDecoration(node, type, slideMasterTextStyles) {
 	return (node["a:rPr"] !== undefined && node["a:rPr"]["attrs"]["u"] === "sng") ? "underline" : "initial";
 }
 
-function getTextVerticalAlign(node) {
+function getTextVerticalAlign(node, type, slideMasterTextStyles) {
 	var baseline = getTextByPathList(node, ["a:rPr", "attrs", "baseline"]);
 	if (baseline === undefined) {
 		return "";
