@@ -101,7 +101,7 @@ section div.down-right {
 }
 
 section span.text-block {
-	display: inline-block;
+	/* display: inline-block; */
 }
 
 li.slide {

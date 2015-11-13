@@ -177,6 +177,7 @@ function processSingleSlide(zip, sldFileName, index, slideSize) {
 	}
 	// Open slideMasterXX.xml
 	var slideMasterContent = readXmlFile(zip, masterFilename);
+	var slideMasterTextStyles = slideMasterContent["p:txStyles"];
 	var slideMasterTables = indexNodes(slideMasterContent);
 	//debug(slideMasterTables);
 	
@@ -188,7 +189,8 @@ function processSingleSlide(zip, sldFileName, index, slideSize) {
 		"zip": zip,
 		"slideLayoutTables": slideLayoutTables,
 		"slideMasterTables": slideMasterTables,
-		"slideResObj": slideResObj
+		"slideResObj": slideResObj,
+		"slideMasterTextStyles": slideMasterTextStyles
 	};
 	
 	var result = "<li class='slide'>" + sldFileName + "<section style='width:" + slideSize.width + "px; height:" + slideSize.height + "px;'>"
@@ -269,6 +271,9 @@ function processNodesInSlide(nodeKey, nodeValue, warpObj, depth) {
 	switch (nodeKey) {
 		case "p:sp":	// Shape, Text
 			result += processSpNode(nodeValue, warpObj);
+			break;
+		case "p:cxnSp":	// Shape, Text (with connection)
+			result += processCxnSpNode(nodeValue, warpObj);
 			break;
 		case "p:pic":	// Picture
 			result += processPicNode(nodeValue, warpObj);
@@ -366,6 +371,25 @@ function processSpNode(node, warpObj) {
 	debug( {"id": id, "name": name, "idx": idx, "type": type, "order": order} );
 	//debug( JSON.stringify( node ) );
 	
+	return genShape(node, slideLayoutSpNode, slideMasterSpNode, id, name, idx, type, order, warpObj["slideMasterTextStyles"]);
+}
+
+function processCxnSpNode(node, warpObj) {
+
+	var id = node["p:nvCxnSpPr"]["p:cNvPr"]["attrs"]["id"];
+	var name = node["p:nvCxnSpPr"]["p:cNvPr"]["attrs"]["name"];
+	//var idx = (node["p:nvCxnSpPr"]["p:nvPr"]["p:ph"] === undefined) ? undefined : node["p:nvSpPr"]["p:nvPr"]["p:ph"]["attrs"]["idx"];
+	//var type = (node["p:nvCxnSpPr"]["p:nvPr"]["p:ph"] === undefined) ? undefined : node["p:nvSpPr"]["p:nvPr"]["p:ph"]["attrs"]["type"];
+	//<p:cNvCxnSpPr>(<p:cNvCxnSpPr>, <a:endCxn>)
+	var order = node["attrs"]["order"];
+
+	debug( {"id": id, "name": name, "order": order} );
+	
+	return genShape(node, undefined, undefined, id, name, undefined, undefined, order, warpObj["slideMasterTextStyles"]);
+}
+
+function genShape(node, slideLayoutSpNode, slideMasterSpNode, id, name, idx, type, order, slideMasterTextStyles) {
+	
 	var xfrmList = ["p:spPr", "a:xfrm"];
 	var slideXfrmNode = getTextByPathList(node, xfrmList);
 	var slideLayoutXfrmNode = getTextByPathList(slideLayoutSpNode, xfrmList);
@@ -374,15 +398,20 @@ function processSpNode(node, warpObj) {
 	var result = "";
 	var svgMode = node["p:style"] !== undefined;
 	
+	var isFlipV = false;
+	if ( getTextByPathList(slideXfrmNode, ["attrs", "flipV"]) === "1" || getTextByPathList(slideXfrmNode, ["attrs", "flipH"]) === "1") {
+		isFlipV = true;
+	}
+	
 	// TODO: 圖形統一用SVG渲染
 	// 優先權: p:spPr(a:solidFill, a:ln, ...), p:style(a:fillRef, a:lnRef, ...)
 	if (svgMode) {
 		
-		var off = slideXfrmNode["a:off"]["attrs"];
+		var off = getTextByPathList(slideXfrmNode, ["a:off", "attrs"]);
 		var x = parseInt(off["x"]) * 96 / 914400;
 		var y = parseInt(off["y"]) * 96 / 914400;
 		
-		var ext = slideXfrmNode["a:ext"]["attrs"];
+		var ext = getTextByPathList(slideXfrmNode, ["a:ext", "attrs"]);
 		var w = parseInt(ext["cx"]) * 96 / 914400;
 		var h = parseInt(ext["cy"]) * 96 / 914400;
 		
@@ -396,16 +425,17 @@ function processSpNode(node, warpObj) {
 		// Fill Color
 		var fillColor = getFill(node, true);
 		
-		// Border Color
-		/*
-		var schemeClr = "a:" + getTextByPathList(node, ["p:style", "a:lnRef", "a:schemeClr", "attrs", "val"]);
-		var borderColor = getTextByPathList(themeContent, ["a:theme", "a:themeElements", "a:clrScheme", schemeClr, "a:srgbClr", "attrs", "val"]);
-		if (borderColor === undefined) {
-			borderColor = "FFF";
-		}
-		borderColor = "#" + borderColor;
-		*/
+		// Border Color		
 		var border = getBorder(node, true);
+		
+		var headEndNodeAttrs = getTextByPathList(node, ["p:spPr", "a:ln", "a:headEnd", "attrs"]);
+		var tailEndNodeAttrs = getTextByPathList(node, ["p:spPr", "a:ln", "a:tailEnd", "attrs"]);
+		// type: none, triangle, stealth, diamond, oval, arrow
+		if ( (headEndNodeAttrs !== undefined && (headEndNodeAttrs["type"] === "triangle" || headEndNodeAttrs["type"] === "arrow")) || 
+			 (tailEndNodeAttrs !== undefined && (tailEndNodeAttrs["type"] === "triangle" || tailEndNodeAttrs["type"] === "arrow")) ) {
+			var triangleMarker = "<defs><marker id=\"markerTriangle\" viewBox=\"0 0 10 10\" refX=\"1\" refY=\"5\" markerWidth=\"5\" markerHeight=\"5\" orient=\"auto-start-reverse\" markerUnits=\"strokeWidth\"><path d=\"M 0 0 L 10 5 L 0 10 z\" /></marker></defs>";
+			result += triangleMarker;
+		}
 		
 		switch ( getTextByPathList(node, ["p:spPr", "a:prstGeom", "attrs", "prst"]) ) {
 			case "rect":
@@ -417,6 +447,25 @@ function processSpNode(node, warpObj) {
 			case "roundRect":
 				result += "<rect x='0' y='0' width='" + w + "' height='" + h + "' rx='15' ry='15' fill='" + fillColor + "' stroke='" + border.color + "' stroke-width='" + border.width + "' />";
 				break;
+			case "line":
+			case "straightConnector1":
+			case "bentConnector2":
+			case "curvedConnector3":
+				if (isFlipV) {
+					result += "<line x1='" + w + "' y1='0' x2='0' y2='" + h + "' stroke='" + border.color + "' stroke-width='" + border.width + "' ";
+				} else {
+					result += "<line x1='0' y1='0' x2='" + w + "' y2='" + h + "' stroke='" + border.color + "' stroke-width='" + border.width + "' ";
+				}
+				if (headEndNodeAttrs !== undefined && (headEndNodeAttrs["type"] === "triangle" || headEndNodeAttrs["type"] === "arrow")) {
+					result += "marker-start='url(#markerTriangle)' ";
+				}
+				if (tailEndNodeAttrs !== undefined && (tailEndNodeAttrs["type"] === "triangle" || tailEndNodeAttrs["type"] === "arrow")) {
+					result += "marker-end='url(#markerTriangle)' ";
+				}
+				result += "/>";
+				break;
+			case "rightArrow":
+			case "triangle":
 			default:
 		}
 		
@@ -432,7 +481,7 @@ function processSpNode(node, warpObj) {
 		
 		// TextBody
 		if (node["p:txBody"] !== undefined) {
-			result += genTextBody(node["p:txBody"], slideLayoutSpNode, slideMasterSpNode, type);
+			result += genTextBody(node["p:txBody"], slideLayoutSpNode, slideMasterSpNode, type, slideMasterTextStyles);
 		}
 		result += "</div>";
 		
@@ -450,7 +499,7 @@ function processSpNode(node, warpObj) {
 		
 		// TextBody
 		if (node["p:txBody"] !== undefined) {
-			result += genTextBody(node["p:txBody"], slideLayoutSpNode, slideMasterSpNode, type);
+			result += genTextBody(node["p:txBody"], slideLayoutSpNode, slideMasterSpNode, type, slideMasterTextStyles);
 		}
 		result += "</div>";
 		
@@ -568,7 +617,7 @@ function processSpPrNode(node, warpObj) {
 	// TODO:
 }
 
-function genTextBody(textBodyNode, slideLayoutSpNode, slideMasterSpNode, type) {
+function genTextBody(textBodyNode, slideLayoutSpNode, slideMasterSpNode, type, slideMasterTextStyles) {
 	
 	var text = "";
 	
@@ -581,19 +630,19 @@ function genTextBody(textBodyNode, slideLayoutSpNode, slideMasterSpNode, type) {
 		for (var i=0; i<textBodyNode["a:p"].length; i++) {
 			var pNode = textBodyNode["a:p"][i];
 			var rNode = pNode["a:r"];
-			text += "<div class='" + getHorizontalAlign(pNode, slideLayoutSpNode, slideMasterSpNode, type) + "'>";
+			text += "<div class='" + getHorizontalAlign(pNode, slideLayoutSpNode, slideMasterSpNode, type, slideMasterTextStyles) + "'>";
 			text += genBuChar(pNode);
 			if (rNode === undefined) {
 				// without r
-				text += genSpanElement(pNode, slideLayoutSpNode, slideMasterSpNode, type);
+				text += genSpanElement(pNode, slideLayoutSpNode, slideMasterSpNode, type, slideMasterTextStyles);
 			} else if (rNode.constructor === Array) {
 				// with multi r
 				for (var j=0; j<rNode.length; j++) {
-					text += genSpanElement(rNode[j], slideLayoutSpNode, slideMasterSpNode, type);
+					text += genSpanElement(rNode[j], slideLayoutSpNode, slideMasterSpNode, type, slideMasterTextStyles);
 				}
 			} else {
 				// with one r
-				text += genSpanElement(rNode, slideLayoutSpNode, slideMasterSpNode, type);
+				text += genSpanElement(rNode, slideLayoutSpNode, slideMasterSpNode, type, slideMasterTextStyles);
 			}
 			text += "</div>";
 		}
@@ -601,19 +650,19 @@ function genTextBody(textBodyNode, slideLayoutSpNode, slideMasterSpNode, type) {
 		// one p
 		var pNode = textBodyNode["a:p"];
 		var rNode = pNode["a:r"];
-		text += "<div class='" + getHorizontalAlign(pNode, slideLayoutSpNode, slideMasterSpNode, type) + "'>";
+		text += "<div class='" + getHorizontalAlign(pNode, slideLayoutSpNode, slideMasterSpNode, type, slideMasterTextStyles) + "'>";
 		text += genBuChar(pNode);
 		if (rNode === undefined) {
 			// without r
-			text += genSpanElement(pNode, slideLayoutSpNode, slideMasterSpNode, type);
+			text += genSpanElement(pNode, slideLayoutSpNode, slideMasterSpNode, type, slideMasterTextStyles);
 		} else if (rNode.constructor === Array) {
 			// with multi r
 			for (var j=0; j<rNode.length; j++) {
-				text += genSpanElement(rNode[j], slideLayoutSpNode, slideMasterSpNode, type);
+				text += genSpanElement(rNode[j], slideLayoutSpNode, slideMasterSpNode, type, slideMasterTextStyles);
 			}
 		} else {
 			// with one r
-			text += genSpanElement(rNode, slideLayoutSpNode, slideMasterSpNode, type);
+			text += genSpanElement(rNode, slideLayoutSpNode, slideMasterSpNode, type, slideMasterTextStyles);
 		}
 		text += "</div>";
 	}
@@ -622,7 +671,14 @@ function genTextBody(textBodyNode, slideLayoutSpNode, slideMasterSpNode, type) {
 }
 
 function genBuChar(node) {
+
 	var pPrNode = node["a:pPr"];
+	
+	var lvl = parseInt( getTextByPathList(pPrNode, ["attrs", "lvl"]) );
+	if (isNaN(lvl)) {
+		lvl = 0;
+	}
+	
 	var buChar = getTextByPathList(pPrNode, ["a:buChar", "attrs", "char"]);
 	if (buChar !== undefined) {
 		var buFontAttrs = getTextByPathList(pPrNode, ["a:buFont", "attrs"]);
@@ -630,7 +686,7 @@ function genBuChar(node) {
 			var marginLeft = parseInt( getTextByPathList(pPrNode, ["attrs", "marL"]) ) * 96 / 914400;
 			var marginRight = parseInt(buFontAttrs["pitchFamily"]);
 			if (isNaN(marginLeft)) {
-				marginLeft = 0;
+				marginLeft = 328600 * 96 / 914400;
 			}
 			if (isNaN(marginRight)) {
 				marginRight = 0;
@@ -638,15 +694,19 @@ function genBuChar(node) {
 			var typeface = buFontAttrs["typeface"];
 			
 			return "<span style='font-family: " + typeface + 
-					"; margin-left: " + marginLeft + "px" +
-					"; margin-right: " + marginRight + "pt;'>" + buChar + "</span>";
+					"; margin-left: " + marginLeft * lvl + "px" +
+					"; margin-right: " + marginRight + "px;'>" + buChar + "</span>";
 		}
+	} else {
+		//buChar = '•';
+		return "<span style='margin-left: " + 328600 * 96 / 914400 * lvl + "px" +
+					"; margin-right: " + 0 + "px;'></span>";
 	}
 	
 	return "";
 }
 
-function genSpanElement(node, slideLayoutSpNode, slideMasterSpNode, type) {
+function genSpanElement(node, slideLayoutSpNode, slideMasterSpNode, type, slideMasterTextStyles) {
 	
 	var text = node["a:t"];
 	if (typeof text !== 'string') {
@@ -657,12 +717,13 @@ function genSpanElement(node, slideLayoutSpNode, slideMasterSpNode, type) {
 		}
 	}
 	
-	return "<span class='text-block' style='color: " + getFontColor(node) + 
-				"; font-size: " + getFontSize(node, slideLayoutSpNode, slideMasterSpNode, type) + 
-				"; font-family: " + getFontType(node) + 
-				"; font-weight: " + getFontBold(node) + 
-				"; font-style: " + getFontItalic(node) + 
-				"; text-decoration: " + getFontDecoration(node) + 
+	return "<span class='text-block' style='color: " + getFontColor(node, type, slideMasterTextStyles) + 
+				"; font-size: " + getFontSize(node, slideLayoutSpNode, slideMasterSpNode, type, slideMasterTextStyles) + 
+				"; font-family: " + getFontType(node, type, slideMasterTextStyles) + 
+				"; font-weight: " + getFontBold(node, type, slideMasterTextStyles) + 
+				"; font-style: " + getFontItalic(node, type, slideMasterTextStyles) + 
+				"; text-decoration: " + getFontDecoration(node, type, slideMasterTextStyles) +
+				"; vertical-align: " + getTextVerticalAlign(node, type, slideMasterTextStyles) + 
 				";'>" + text.replace(/\s/i, "&nbsp;") + "</span>";
 }
 
@@ -718,13 +779,24 @@ function getSize(slideSpNode, slideLayoutSpNode, slideMasterSpNode) {
 	
 }
 
-function getHorizontalAlign(node, slideLayoutSpNode, slideMasterSpNode, type) {
+function getHorizontalAlign(node, slideLayoutSpNode, slideMasterSpNode, type, slideMasterTextStyles) {
 	//debug(node);
 	var algn = getTextByPathList(node, ["a:pPr", "attrs", "algn"]);
 	if (algn === undefined) {
 		algn = getTextByPathList(slideLayoutSpNode, ["p:txBody", "a:p", "a:pPr", "attrs", "algn"]);
 		if (algn === undefined) {
 			algn = getTextByPathList(slideMasterSpNode, ["p:txBody", "a:p", "a:pPr", "attrs", "algn"]);
+			if (algn === undefined) {
+				switch (type) {
+					case "title":
+					case "subTitle":
+					case "ctrTitle":
+						algn = getTextByPathList(slideMasterTextStyles, ["p:titleStyle", "a:lvl1pPr", "attrs", "alng"]);
+						break;
+					default:
+						algn = getTextByPathList(slideMasterTextStyles, ["p:otherStyle", "a:lvl1pPr", "attrs", "alng"]);
+				}
+			}
 		}
 	}
 	// TODO:
@@ -738,7 +810,7 @@ function getHorizontalAlign(node, slideLayoutSpNode, slideMasterSpNode, type) {
 	return algn === "ctr" ? "h-mid" : algn === "r" ? "h-right" : "h-left";
 }
 
-function getVerticalAlign(node, slideLayoutSpNode, slideMasterSpNode, type) {
+function getVerticalAlign(node, slideLayoutSpNode, slideMasterSpNode, type, slideMasterTextStyles) {
 	
 	// 上中下對齊: X, <a:bodyPr anchor="ctr">, <a:bodyPr anchor="b">
 	var anchor = getTextByPathList(node, ["p:txBody", "a:bodyPr", "attrs", "anchor"]);
@@ -752,17 +824,17 @@ function getVerticalAlign(node, slideLayoutSpNode, slideMasterSpNode, type) {
 	return anchor === "ctr" ? "v-mid" : anchor === "b" ?  "v-down" : "v-up";
 }
 
-function getFontType(node) {
+function getFontType(node, type, slideMasterTextStyles) {
 	var typeface = getTextByPathList(node, ["a:rPr", "a:latin", "attrs", "typeface"]);
 	return (typeface === undefined) ? "inherit" : typeface;
 }
 
-function getFontColor(node) {
+function getFontColor(node, type, slideMasterTextStyles) {
 	var color = getTextByPathStr(node, "a:rPr a:solidFill a:srgbClr attrs val");
 	return (color === undefined) ? "#000" : "#" + color;
 }
 
-function getFontSize(node, slideLayoutSpNode, slideMasterSpNode, type) {
+function getFontSize(node, slideLayoutSpNode, slideMasterSpNode, type, slideMasterTextStyles) {
 	var fontSize = undefined;
 	if (node["a:rPr"] !== undefined) {
 		fontSize = parseInt(node["a:rPr"]["attrs"]["sz"]) / 100;
@@ -780,25 +852,40 @@ function getFontSize(node, slideLayoutSpNode, slideMasterSpNode, type) {
 	
 	if (isNaN(fontSize)) {
 		if (type == "title" || type == "subTitle" || type == "ctrTitle") {
-			fontSize = titleFontSize;
+			fontSize = parseInt(getTextByPathList(slideMasterTextStyles, ["p:titleStyle", "a:lvl1pPr", "a:defRPr", "attrs", "sz"]));
 		} else if (type === undefined) {
-			fontSize = otherFontSize;
+			fontSize = parseInt(getTextByPathList(slideMasterTextStyles, ["p:otherStyle", "a:lvl1pPr", "a:defRPr", "attrs", "sz"]));;
 		}
+	}
+	
+	var baseline = getTextByPathList(node, ["a:rPr", "attrs", "baseline"]);
+	if (baseline !== undefined && !isNaN(fontSize)) {
+		fontSize -= 10;
 	}
 	
 	return isNaN(fontSize) ? "inherit" : (fontSize + "pt");
 }
 
-function getFontBold(node) {
+function getFontBold(node, type, slideMasterTextStyles) {
 	return (node["a:rPr"] !== undefined && node["a:rPr"]["attrs"]["b"] === "1") ? "bold" : "initial";
 }
 
-function getFontItalic(node) {
+function getFontItalic(node, type, slideMasterTextStyles) {
 	return (node["a:rPr"] !== undefined && node["a:rPr"]["attrs"]["i"] === "1") ? "italic" : "normal";
 }
 
-function getFontDecoration(node) {
+function getFontDecoration(node, type, slideMasterTextStyles) {
 	return (node["a:rPr"] !== undefined && node["a:rPr"]["attrs"]["u"] === "sng") ? "underline" : "initial";
+}
+
+function getTextVerticalAlign(node, type, slideMasterTextStyles) {
+	var baseline = getTextByPathList(node, ["a:rPr", "attrs", "baseline"]);
+	if (baseline === undefined) {
+		return "";
+	} else {
+		baseline = parseInt(baseline) / 1000;
+		return baseline + "%";
+	}
 }
 
 function getBorder(node, isSvgMode) {
@@ -820,21 +907,24 @@ function getBorder(node, isSvgMode) {
 	
 	// Border color
 	var borderColor = getTextByPathList(lineNode, ["a:solidFill", "a:srgbClr", "attrs", "val"]);
-	//borderColor = ;
-	//if (borderColor === undefined) {
-	//	borderColor = "000";
-	//}
-	//var borderColor = "000";
-	//cssText += "#" + borderColor + " ";
 	
 	// 2. drawingML namespace
-	//$lineNode = $node.find("style").find("lnRef");
 	if (borderColor === undefined) {
-		var schemeClr = "a:" + getTextByPathList(node, ["p:style", "a:lnRef", "a:schemeClr", "attrs", "val"]);
-		var borderColor = getTextByPathList(themeContent, ["a:theme", "a:themeElements", "a:clrScheme", schemeClr, "a:srgbClr", "attrs", "val"]);
+		var schemeClrNode = getTextByPathList(node, ["p:style", "a:lnRef", "a:schemeClr"]);
+		var schemeClr = "a:" + getTextByPathList(schemeClrNode, ["attrs", "val"]);	
+		var borderColor = getSchemeColorFromTheme(schemeClr);
 		if (borderColor === undefined) {
 			borderColor = "FFF";
-		}	
+		}
+		
+		var shade = getTextByPathList(schemeClrNode, ["a:shade", "attrs", "val"]);
+		if (shade !== undefined) {
+			shade = parseInt(shade) / 100000;
+			var color = new colz.Color("#" + borderColor);
+			color.setLum(color.hsl.l * shade);
+			borderColor = color.hex.replace("#", "");
+		}
+		
 	}
 	borderColor = "#" + borderColor;
 	
@@ -902,13 +992,13 @@ function getFill(node, isSvgMode) {
 	// From theme
 	if (fillColor === undefined) {
 		var schemeClr = "a:" + getTextByPathList(node, ["p:spPr", "a:solidFill", "a:schemeClr", "attrs", "val"]);
-		fillColor = getTextByPathList(themeContent, ["a:theme", "a:themeElements", "a:clrScheme", schemeClr, "a:srgbClr", "attrs", "val"]);
+		fillColor = getSchemeColorFromTheme(schemeClr);
 	}
 	
 	// 2. drawingML namespace
 	if (fillColor === undefined) {
 		var schemeClr = "a:" + getTextByPathList(node, ["p:style", "a:fillRef", "a:schemeClr", "attrs", "val"]);
-		fillColor = getTextByPathList(themeContent, ["a:theme", "a:themeElements", "a:clrScheme", schemeClr, "a:srgbClr", "attrs", "val"]);
+		fillColor = getSchemeColorFromTheme(schemeClr);
 	}
 	
 	if (fillColor !== undefined) {
@@ -942,6 +1032,15 @@ function getFill(node, isSvgMode) {
 		
 	}
 	
+}
+
+function getSchemeColorFromTheme(schemeClr) {
+	var refNode = getTextByPathList(themeContent, ["a:theme", "a:themeElements", "a:clrScheme", schemeClr]);
+	var color = getTextByPathList(refNode, ["a:srgbClr", "attrs", "val"]);
+	if (color === undefined) {
+		color = getTextByPathList(refNode, ["a:sysClr", "attrs", "lastClr"]);
+	}
+	return color;
 }
 
 // ===== Node functions =====
