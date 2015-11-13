@@ -671,7 +671,14 @@ function genTextBody(textBodyNode, slideLayoutSpNode, slideMasterSpNode, type, s
 }
 
 function genBuChar(node) {
+
 	var pPrNode = node["a:pPr"];
+	
+	var lvl = parseInt( getTextByPathList(pPrNode, ["attrs", "lvl"]) );
+	if (isNaN(lvl)) {
+		lvl = 0;
+	}
+	
 	var buChar = getTextByPathList(pPrNode, ["a:buChar", "attrs", "char"]);
 	if (buChar !== undefined) {
 		var buFontAttrs = getTextByPathList(pPrNode, ["a:buFont", "attrs"]);
@@ -679,7 +686,7 @@ function genBuChar(node) {
 			var marginLeft = parseInt( getTextByPathList(pPrNode, ["attrs", "marL"]) ) * 96 / 914400;
 			var marginRight = parseInt(buFontAttrs["pitchFamily"]);
 			if (isNaN(marginLeft)) {
-				marginLeft = 0;
+				marginLeft = 328600 * 96 / 914400;
 			}
 			if (isNaN(marginRight)) {
 				marginRight = 0;
@@ -687,9 +694,13 @@ function genBuChar(node) {
 			var typeface = buFontAttrs["typeface"];
 			
 			return "<span style='font-family: " + typeface + 
-					"; margin-left: " + marginLeft + "px" +
-					"; margin-right: " + marginRight + "pt;'>" + buChar + "</span>";
+					"; margin-left: " + marginLeft * lvl + "px" +
+					"; margin-right: " + marginRight + "px;'>" + buChar + "</span>";
 		}
+	} else {
+		//buChar = '•';
+		return "<span style='margin-left: " + 328600 * 96 / 914400 * lvl + "px" +
+					"; margin-right: " + 0 + "px;'></span>";
 	}
 	
 	return "";
