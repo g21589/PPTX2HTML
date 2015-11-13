@@ -405,11 +405,11 @@ function genShape(node, slideLayoutSpNode, slideMasterSpNode, id, name, idx, typ
 	// 優先權: p:spPr(a:solidFill, a:ln, ...), p:style(a:fillRef, a:lnRef, ...)
 	if (svgMode) {
 		
-		var off = slideXfrmNode["a:off"]["attrs"];
+		var off = getTextByPathList(slideXfrmNode, ["a:off", "attrs"]);
 		var x = parseInt(off["x"]) * 96 / 914400;
 		var y = parseInt(off["y"]) * 96 / 914400;
 		
-		var ext = slideXfrmNode["a:ext"]["attrs"];
+		var ext = getTextByPathList(slideXfrmNode, ["a:ext", "attrs"]);
 		var w = parseInt(ext["cx"]) * 96 / 914400;
 		var h = parseInt(ext["cy"]) * 96 / 914400;
 		
@@ -428,10 +428,11 @@ function genShape(node, slideLayoutSpNode, slideMasterSpNode, id, name, idx, typ
 		
 		var headEndNodeAttrs = getTextByPathList(node, ["p:spPr", "a:ln", "a:headEnd", "attrs"]);
 		var tailEndNodeAttrs = getTextByPathList(node, ["p:spPr", "a:ln", "a:tailEnd", "attrs"]);
-		if ((headEndNodeAttrs !== undefined && headEndNodeAttrs["type"] === "triangle") || 
-			(tailEndNodeAttrs !== undefined && tailEndNodeAttrs["type"] === "triangle")) {
-				var triangleMarker = "<defs><marker id=\"markerTriangle\" viewBox=\"0 0 10 10\" refX=\"1\" refY=\"5\" markerWidth=\"5\" markerHeight=\"5\" orient=\"auto\"><path d=\"M 0 0 L 10 5 L 0 10 z\" /></marker></defs>";
-				result += triangleMarker;
+		// type: none, triangle, stealth, diamond, oval, arrow
+		if ( (headEndNodeAttrs !== undefined && (headEndNodeAttrs["type"] === "triangle" || headEndNodeAttrs["type"] === "arrow")) || 
+			 (tailEndNodeAttrs !== undefined && (tailEndNodeAttrs["type"] === "triangle" || tailEndNodeAttrs["type"] === "arrow")) ) {
+			var triangleMarker = "<defs><marker id=\"markerTriangle\" viewBox=\"0 0 10 10\" refX=\"1\" refY=\"5\" markerWidth=\"5\" markerHeight=\"5\" orient=\"auto-start-reverse\" markerUnits=\"strokeWidth\"><path d=\"M 0 0 L 10 5 L 0 10 z\" /></marker></defs>";
+			result += triangleMarker;
 		}
 		
 		switch ( getTextByPathList(node, ["p:spPr", "a:prstGeom", "attrs", "prst"]) ) {
@@ -446,15 +447,17 @@ function genShape(node, slideLayoutSpNode, slideMasterSpNode, id, name, idx, typ
 				break;
 			case "line":
 			case "straightConnector1":
+			case "bentConnector2":
+			case "curvedConnector3":
 				if (isFlipV) {
 					result += "<line x1='" + w + "' y1='0' x2='0' y2='" + h + "' stroke='" + border.color + "' stroke-width='" + border.width + "' ";
 				} else {
 					result += "<line x1='0' y1='0' x2='" + w + "' y2='" + h + "' stroke='" + border.color + "' stroke-width='" + border.width + "' ";
 				}
-				if (headEndNodeAttrs !== undefined && headEndNodeAttrs["type"] === "triangle") {
+				if (headEndNodeAttrs !== undefined && (headEndNodeAttrs["type"] === "triangle" || headEndNodeAttrs["type"] === "arrow")) {
 					result += "marker-start='url(#markerTriangle)' ";
 				}
-				if (tailEndNodeAttrs !== undefined && tailEndNodeAttrs["type"] === "triangle") {
+				if (tailEndNodeAttrs !== undefined && (tailEndNodeAttrs["type"] === "triangle" || tailEndNodeAttrs["type"] === "arrow")) {
 					result += "marker-end='url(#markerTriangle)' ";
 				}
 				result += "/>";
@@ -884,8 +887,8 @@ function getBorder(node, isSvgMode) {
 	// 2. drawingML namespace
 	if (borderColor === undefined) {
 		var schemeClrNode = getTextByPathList(node, ["p:style", "a:lnRef", "a:schemeClr"]);
-		var schemeClr = "a:" + getTextByPathList(schemeClrNode, ["attrs", "val"]);
-		var borderColor = getTextByPathList(themeContent, ["a:theme", "a:themeElements", "a:clrScheme", schemeClr, "a:srgbClr", "attrs", "val"]);
+		var schemeClr = "a:" + getTextByPathList(schemeClrNode, ["attrs", "val"]);	
+		var borderColor = getSchemeColorFromTheme(schemeClr);
 		if (borderColor === undefined) {
 			borderColor = "FFF";
 		}
@@ -965,13 +968,13 @@ function getFill(node, isSvgMode) {
 	// From theme
 	if (fillColor === undefined) {
 		var schemeClr = "a:" + getTextByPathList(node, ["p:spPr", "a:solidFill", "a:schemeClr", "attrs", "val"]);
-		fillColor = getTextByPathList(themeContent, ["a:theme", "a:themeElements", "a:clrScheme", schemeClr, "a:srgbClr", "attrs", "val"]);
+		fillColor = getSchemeColorFromTheme(schemeClr);
 	}
 	
 	// 2. drawingML namespace
 	if (fillColor === undefined) {
 		var schemeClr = "a:" + getTextByPathList(node, ["p:style", "a:fillRef", "a:schemeClr", "attrs", "val"]);
-		fillColor = getTextByPathList(themeContent, ["a:theme", "a:themeElements", "a:clrScheme", schemeClr, "a:srgbClr", "attrs", "val"]);
+		fillColor = getSchemeColorFromTheme(schemeClr);
 	}
 	
 	if (fillColor !== undefined) {
@@ -1005,6 +1008,15 @@ function getFill(node, isSvgMode) {
 		
 	}
 	
+}
+
+function getSchemeColorFromTheme(schemeClr) {
+	var refNode = getTextByPathList(themeContent, ["a:theme", "a:themeElements", "a:clrScheme", schemeClr]);
+	var color = getTextByPathList(refNode, ["a:srgbClr", "attrs", "val"]);
+	if (color === undefined) {
+		color = getTextByPathList(refNode, ["a:sysClr", "attrs", "lastClr"]);
+	}
+	return color;
 }
 
 // ===== Node functions =====
