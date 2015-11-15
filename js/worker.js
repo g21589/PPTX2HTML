@@ -414,6 +414,7 @@ function genShape(node, slideLayoutSpNode, slideMasterSpNode, id, name, idx, typ
 		var ext = getTextByPathList(slideXfrmNode, ["a:ext", "attrs"]);
 		var w = parseInt(ext["cx"]) * 96 / 914400;
 		var h = parseInt(ext["cy"]) * 96 / 914400;
+		var shapType = getTextByPathList(node, ["p:spPr", "a:prstGeom", "attrs", "prst"]);
 		
 		result += "<svg class='drawing' _id='" + id + "' _idx='" + idx + "' _type='" + type + "' _name='" + name +
 				"' style='" + 
@@ -437,24 +438,209 @@ function genShape(node, slideLayoutSpNode, slideMasterSpNode, id, name, idx, typ
 			result += triangleMarker;
 		}
 		
-		switch ( getTextByPathList(node, ["p:spPr", "a:prstGeom", "attrs", "prst"]) ) {
+		switch (shapType) {
+			case "accentBorderCallout1":
+			case "accentBorderCallout2":
+			case "accentBorderCallout3":
+			case "accentCallout1":
+			case "accentCallout2":
+			case "accentCallout3":
+			case "actionButtonBackPrevious":
+			case "actionButtonBeginning":
+			case "actionButtonBlank":
+			case "actionButtonDocument":
+			case "actionButtonEnd":
+			case "actionButtonForwardNext":
+			case "actionButtonHelp":
+			case "actionButtonHome":
+			case "actionButtonInformation":
+			case "actionButtonMovie":
+			case "actionButtonReturn":
+			case "actionButtonSound":
+			case "arc":
+			case "bentArrow":
+			case "bentUpArrow":
+			case "bevel":
+			case "blockArc":
+			case "borderCallout1":
+			case "borderCallout2":
+			case "borderCallout3":
+			case "bracePair":
+			case "bracketPair":
+			case "callout1":
+			case "callout2":
+			case "callout3":
+			case "can":
+			case "chartPlus":
+			case "chartStar":
+			case "chartX":
+			case "chevron":
+			case "chord":
+			case "circularArrow":
+			case "cloud":
+			case "cloudCallout":
+			case "corner":
+			case "cornerTabs":
+			case "cube":
+			case "curvedDownArrow":
+			case "curvedLeftArrow":
+			case "curvedRightArrow":
+			case "curvedUpArrow":
+			case "decagon":
+			case "diagStripe":
+			case "diamond":
+			case "dodecagon":
+			case "donut":
+			case "doubleWave":
+			case "downArrow":
+			case "downArrowCallout":
+			case "ellipseRibbon":
+			case "ellipseRibbon2":
+			case "flowChartAlternateProcess":
+			case "flowChartCollate":
+			case "flowChartConnector":
+			case "flowChartDecision":
+			case "flowChartDelay":
+			case "flowChartDisplay":
+			case "flowChartDocument":
+			case "flowChartExtract":
+			case "flowChartInputOutput":
+			case "flowChartInternalStorage":
+			case "flowChartMagneticDisk":
+			case "flowChartMagneticDrum":
+			case "flowChartMagneticTape":
+			case "flowChartManualInput":
+			case "flowChartManualOperation":
+			case "flowChartMerge":
+			case "flowChartMultidocument":
+			case "flowChartOfflineStorage":
+			case "flowChartOffpageConnector":
+			case "flowChartOnlineStorage":
+			case "flowChartOr":
+			case "flowChartPredefinedProcess":
+			case "flowChartPreparation":
+			case "flowChartProcess":
+			case "flowChartPunchedCard":
+			case "flowChartPunchedTape":
+			case "flowChartSort":
+			case "flowChartSummingJunction":
+			case "flowChartTerminator":
+			case "folderCorner":
+			case "frame":
+			case "funnel":
+			case "gear6":
+			case "gear9":
+			case "halfFrame":
+			case "heart":
+			case "heptagon":
+			case "hexagon":
+			case "homePlate":
+			case "horizontalScroll":
+			case "irregularSeal1":
+			case "irregularSeal2":
+			case "leftArrow":
+			case "leftArrowCallout":
+			case "leftBrace":
+			case "leftBracket":
+			case "leftCircularArrow":
+			case "leftRightArrow":
+			case "leftRightArrowCallout":
+			case "leftRightCircularArrow":
+			case "leftRightRibbon":
+			case "irregularSeal1":
+			case "leftRightUpArrow":
+			case "leftUpArrow":
+			case "lightningBolt":
+			case "lineInv":
+			case "mathDivide":
+			case "mathEqual":
+			case "mathMinus":
+			case "mathMultiply":
+			case "mathNotEqual":
+			case "mathPlus":
+			case "moon":
+			case "nonIsoscelesTrapezoid":
+			case "noSmoking":
+			case "notchedRightArrow":
+			case "octagon":
+			case "parallelogram":
+			case "pentagon":
+			case "pie":
+			case "pieWedge":
+			case "plaque":
+			case "plaqueTabs":
+			case "plus":
+			case "quadArrow":
+			case "quadArrowCallout":
 			case "rect":
-				result += "<rect x='0' y='0' width='" + w + "' height='" + h + "' fill='" + fillColor + "' stroke='" + border.color + "' stroke-width='" + border.width + "' />";
+			case "ribbon":
+			case "ribbon2":
+			case "rightArrowCallout":
+			case "rightBrace":
+			case "rightBracket":
+			case "round1Rect":
+			case "round2DiagRect":
+			case "round2SameRect":
+			case "rtTriangle":
+			case "smileyFace":
+			case "snip1Rect":
+			case "snip2DiagRect":
+			case "snip2SameRect":
+			case "snipRoundRect":
+			case "squareTabs":
+			case "star10":
+			case "star12":
+			case "star16":
+			case "star24":
+			case "star32":
+			case "star4":
+			case "star5":
+			case "star6":
+			case "star7":
+			case "star8":
+			case "stripedRightArrow":
+			case "sun":
+			case "swooshArrow":
+			case "teardrop":
+			case "trapezoid":
+			case "upArrow":
+			case "upArrowCallout":
+			case "upDownArrow":
+			case "upDownArrowCallout":
+			case "uturnArrow":
+			case "verticalScroll":
+			case "wave":
+			case "wedgeEllipseCallout":
+			case "wedgeRectCallout":
+			case "wedgeRoundRectCallout":
+			case "rect":
+				result += "<rect x='0' y='0' width='" + w + "' height='" + h + "' fill='" + fillColor + 
+							"' stroke='" + border.color + "' stroke-width='" + border.width + "' stroke-dasharray='" + border.strokeDasharray + "' />";
 				break;
 			case "ellipse":
-				result += "<ellipse cx='" + (w / 2) + "' cy='" + (h / 2) + "' rx='" + (w / 2) + "' ry='" + (h / 2) + "' fill='" + fillColor + "' stroke='" + border.color + "' stroke-width='" + border.width + "' />";
+				result += "<ellipse cx='" + (w / 2) + "' cy='" + (h / 2) + "' rx='" + (w / 2) + "' ry='" + (h / 2) + "' fill='" + fillColor + 
+							"' stroke='" + border.color + "' stroke-width='" + border.width + "' stroke-dasharray='" + border.strokeDasharray + "' />";
 				break;
 			case "roundRect":
-				result += "<rect x='0' y='0' width='" + w + "' height='" + h + "' rx='15' ry='15' fill='" + fillColor + "' stroke='" + border.color + "' stroke-width='" + border.width + "' />";
+				result += "<rect x='0' y='0' width='" + w + "' height='" + h + "' rx='7' ry='7' fill='" + fillColor + 
+							"' stroke='" + border.color + "' stroke-width='" + border.width + "' stroke-dasharray='" + border.strokeDasharray + "' />";
 				break;
 			case "line":
 			case "straightConnector1":
 			case "bentConnector2":
+			case "bentConnector3":
+			case "bentConnector4":
+			case "bentConnector5":
+			case "curvedConnector2":
 			case "curvedConnector3":
+			case "curvedConnector4":
+			case "curvedConnector5":
 				if (isFlipV) {
-					result += "<line x1='" + w + "' y1='0' x2='0' y2='" + h + "' stroke='" + border.color + "' stroke-width='" + border.width + "' ";
+					result += "<line x1='" + w + "' y1='0' x2='0' y2='" + h + "' stroke='" + border.color + 
+								"' stroke-width='" + border.width + "' stroke-dasharray='" + border.strokeDasharray + "' ";
 				} else {
-					result += "<line x1='0' y1='0' x2='" + w + "' y2='" + h + "' stroke='" + border.color + "' stroke-width='" + border.width + "' ";
+					result += "<line x1='0' y1='0' x2='" + w + "' y2='" + h + "' stroke='" + border.color + 
+								"' stroke-width='" + border.width + "' stroke-dasharray='" + border.strokeDasharray + "' ";
 				}
 				if (headEndNodeAttrs !== undefined && (headEndNodeAttrs["type"] === "triangle" || headEndNodeAttrs["type"] === "arrow")) {
 					result += "marker-start='url(#markerTriangle)' ";
@@ -466,7 +652,9 @@ function genShape(node, slideLayoutSpNode, slideMasterSpNode, id, name, idx, typ
 				break;
 			case "rightArrow":
 			case "triangle":
+			case undefined:
 			default:
+				console.warn("Undefine shape type.");
 		}
 		
 		result += "</svg>";
@@ -930,36 +1118,47 @@ function getBorder(node, isSvgMode) {
 	
 	// Border type
 	var borderType = getTextByPathList(lineNode, ["a:prstDash", "attrs", "val"]);
+	var strokeDasharray = "0";
 	switch (borderType) {
 		case "solid":
 			cssText += "solid";
+			strokeDasharray = "0";
 			break;
 		case "dash":
 			cssText += "dashed";
+			strokeDasharray = "5";
 			break;
 		case "dashDot":
 			cssText += "dashed";
+			strokeDasharray = "5, 5, 1, 5";
 			break;
 		case "dot":
 			cssText += "dotted";
+			strokeDasharray = "1, 5";
 			break;
 		case "lgDash":
 			cssText += "dashed";
+			strokeDasharray = "10, 5";
 			break;
 		case "lgDashDotDot":
 			cssText += "dashed";
+			strokeDasharray = "10, 5, 1, 5, 1, 5";
 			break;
 		case "sysDash":
 			cssText += "dashed";
+			strokeDasharray = "5, 2";
 			break;
 		case "sysDashDot":
 			cssText += "dashed";
+			strokeDasharray = "5, 2, 1, 5";
 			break;
 		case "sysDashDotDot":
 			cssText += "dashed";
+			strokeDasharray = "5, 2, 1, 5, 1, 5";
 			break;
 		case "sysDot":
 			cssText += "dotted";
+			strokeDasharray = "2, 5";
 			break;
 		case undefined:
 			//console.log(borderType);
@@ -969,7 +1168,7 @@ function getBorder(node, isSvgMode) {
 	}
 	
 	if (isSvgMode) {
-		return {"color": borderColor, "width": borderWidth, "type": borderType};
+		return {"color": borderColor, "width": borderWidth, "type": borderType, "strokeDasharray": strokeDasharray};
 	} else {
 		return cssText + ";";
 	}
