@@ -396,7 +396,7 @@ function genShape(node, slideLayoutSpNode, slideMasterSpNode, id, name, idx, typ
 	var slideMasterXfrmNode = getTextByPathList(slideMasterSpNode, xfrmList);
 	
 	var result = "";
-	var svgMode = node["p:style"] !== undefined;
+	var shapType = getTextByPathList(node, ["p:spPr", "a:prstGeom", "attrs", "prst"]);
 	
 	var isFlipV = false;
 	if ( getTextByPathList(slideXfrmNode, ["attrs", "flipV"]) === "1" || getTextByPathList(slideXfrmNode, ["attrs", "flipH"]) === "1") {
@@ -405,7 +405,7 @@ function genShape(node, slideLayoutSpNode, slideMasterSpNode, id, name, idx, typ
 	
 	// TODO: 圖形統一用SVG渲染
 	// 優先權: p:spPr(a:solidFill, a:ln, ...), p:style(a:fillRef, a:lnRef, ...)
-	if (svgMode) {
+	if (shapType !== undefined) {
 		
 		var off = getTextByPathList(slideXfrmNode, ["a:off", "attrs"]);
 		var x = parseInt(off["x"]) * 96 / 914400;
@@ -414,7 +414,6 @@ function genShape(node, slideLayoutSpNode, slideMasterSpNode, id, name, idx, typ
 		var ext = getTextByPathList(slideXfrmNode, ["a:ext", "attrs"]);
 		var w = parseInt(ext["cx"]) * 96 / 914400;
 		var h = parseInt(ext["cy"]) * 96 / 914400;
-		var shapType = getTextByPathList(node, ["p:spPr", "a:prstGeom", "attrs", "prst"]);
 		
 		result += "<svg class='drawing' _id='" + id + "' _idx='" + idx + "' _type='" + type + "' _name='" + name +
 				"' style='" + 
@@ -625,9 +624,25 @@ function genShape(node, slideLayoutSpNode, slideMasterSpNode, id, name, idx, typ
 				result += "<rect x='0' y='0' width='" + w + "' height='" + h + "' rx='7' ry='7' fill='" + fillColor + 
 							"' stroke='" + border.color + "' stroke-width='" + border.width + "' stroke-dasharray='" + border.strokeDasharray + "' />";
 				break;
+			case "bentConnector2":	// 直角 (path)
+				var d = "";
+				if (isFlipV) {
+					d = "M 0 " + w + " L " + h + " " + w + " L " + h + " 0";
+				} else {
+					d = "M " + w + " 0 L " + w + " " + h + " L 0 " + h;
+				}
+				result += "<path d='" + d + "' stroke='" + border.color + 
+								"' stroke-width='" + border.width + "' stroke-dasharray='" + border.strokeDasharray + "' fill='none' ";
+				if (headEndNodeAttrs !== undefined && (headEndNodeAttrs["type"] === "triangle" || headEndNodeAttrs["type"] === "arrow")) {
+					result += "marker-start='url(#markerTriangle)' ";
+				}
+				if (tailEndNodeAttrs !== undefined && (tailEndNodeAttrs["type"] === "triangle" || tailEndNodeAttrs["type"] === "arrow")) {
+					result += "marker-end='url(#markerTriangle)' ";
+				}
+				result += "/>";
+				break;
 			case "line":
 			case "straightConnector1":
-			case "bentConnector2":
 			case "bentConnector3":
 			case "bentConnector4":
 			case "bentConnector5":
@@ -674,7 +689,7 @@ function genShape(node, slideLayoutSpNode, slideMasterSpNode, id, name, idx, typ
 		result += "</div>";
 		
 	} else {
-	
+		
 		result += "<div class='block content " + getVerticalAlign(node, slideLayoutSpNode, slideMasterSpNode, type) +
 				"' _id='" + id + "' _idx='" + idx + "' _type='" + type + "' _name='" + name +
 				"' style='" + 
@@ -1101,20 +1116,30 @@ function getBorder(node, isSvgMode) {
 		var schemeClrNode = getTextByPathList(node, ["p:style", "a:lnRef", "a:schemeClr"]);
 		var schemeClr = "a:" + getTextByPathList(schemeClrNode, ["attrs", "val"]);	
 		var borderColor = getSchemeColorFromTheme(schemeClr);
-		if (borderColor === undefined) {
-			borderColor = "FFF";
-		}
 		
-		var shade = getTextByPathList(schemeClrNode, ["a:shade", "attrs", "val"]);
-		if (shade !== undefined) {
-			shade = parseInt(shade) / 100000;
-			var color = new colz.Color("#" + borderColor);
-			color.setLum(color.hsl.l * shade);
-			borderColor = color.hex.replace("#", "");
+		if (borderColor !== undefined) {
+			var shade = getTextByPathList(schemeClrNode, ["a:shade", "attrs", "val"]);
+			if (shade !== undefined) {
+				shade = parseInt(shade) / 100000;
+				var color = new colz.Color("#" + borderColor);
+				color.setLum(color.hsl.l * shade);
+				borderColor = color.hex.replace("#", "");
+			}
 		}
 		
 	}
-	borderColor = "#" + borderColor;
+	
+	if (borderColor === undefined) {
+		if (isSvgMode) {
+			borderColor = "none";
+		} else {
+			borderColor = "#000";
+		}
+	} else {
+		borderColor = "#" + borderColor;
+		
+	}
+	cssText += " " + borderColor + " ";
 	
 	// Border type
 	var borderType = getTextByPathList(lineNode, ["a:prstDash", "attrs", "val"]);
@@ -1224,7 +1249,7 @@ function getFill(node, isSvgMode) {
 		}
 	} else {		
 		if (isSvgMode) {
-			return "#FFF";
+			return "none";
 		} else {
 			return "background-color: " + fillColor + ";";
 		}
