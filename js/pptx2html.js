@@ -69,6 +69,19 @@ $(document).ready(function() {
 			$("#slideContentModel .modal-body textarea").text($result.html());
 		});
 		
+		$("#download-btn").click(function () {
+			var cssText = "";
+			$.get("css/pptx2html.css", function (data) {
+				cssText = data;
+			}).done(function () {
+				var headHtml = "<style>" + cssText + "</style>";
+				var bodyHtml = $result.html();
+				var html = "<!DOCTYPE html><html><head>" + headHtml + "</head><body>" + bodyHtml + "</body></html>";
+				var blob = new Blob([html], {type: "text/html;charset=utf-8"});
+				saveAs(blob, "slides.html");
+			});
+		});
+		
 	} else {
 		
 		alert("Browser don't support Web Worker!");
