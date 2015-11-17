@@ -3,8 +3,11 @@ $(document).ready(function() {
 	if (window.Worker) {
 		
 		var $result = $("#result");
+		var isDone = false;
 		
 		$("#uploadBtn").on("change", function(evt) {
+			
+			isDone = false;
 			
 			$result.html("");
 			$("#load-progress").text("0%").attr("aria-valuenow", 0).css("width", "0%");
@@ -38,6 +41,7 @@ $(document).ready(function() {
 								break;
 							case "ExecutionTime":
 								$("#info_block").html("Execution Time: " + msg.data + " (ms)");
+								isDone = true;
 								break;
 							case "WARN":
 								console.warn('Worker: ', msg.data);
@@ -66,10 +70,12 @@ $(document).ready(function() {
 		});
 		
 		$("#slideContentModel").on("show.bs.modal", function (e) {
+			if (!isDone) { return; }
 			$("#slideContentModel .modal-body textarea").text($result.html());
 		});
 		
 		$("#download-btn").click(function () {
+			if (!isDone) { return; }
 			var cssText = "";
 			$.get("css/pptx2html.css", function (data) {
 				cssText = data;
@@ -77,6 +83,43 @@ $(document).ready(function() {
 				var headHtml = "<style>" + cssText + "</style>";
 				var bodyHtml = $result.html();
 				var html = "<!DOCTYPE html><html><head>" + headHtml + "</head><body>" + bodyHtml + "</body></html>";
+				var blob = new Blob([html], {type: "text/html;charset=utf-8"});
+				saveAs(blob, "slides_p.html");
+			});
+		});
+		
+		$("#download-reveal-btn").click(function () {
+			if (!isDone) { return; }
+			var cssText = "";
+			$.get("css/pptx2html.css", function (data) {
+				cssText = data;
+			}).done(function () {
+				var revealPrefix = 
+"<script type='text/javascript'>\
+Reveal.initialize({\
+	controls: true,\
+	progress: true,\
+	history: true,\
+	center: true,\
+	keyboard: true,\
+	slideNumber: true,\
+	\
+	theme: Reveal.getQueryHash().theme,\
+	transition: Reveal.getQueryHash().transition || 'default',\
+	\
+	dependencies: [\
+		{ src: 'lib/js/classList.js', condition: function() { return !document.body.classList; } },\
+		{ src: 'plugin/markdown/marked.js', condition: function() { return !!document.querySelector( '[data-markdown]' ); } },\
+		{ src: 'plugin/markdown/markdown.js', condition: function() { return !!document.querySelector( '[data-markdown]' ); } },\
+		{ src: 'plugin/highlight/highlight.js', async: true, callback: function() { hljs.initHighlightingOnLoad(); } },\
+		{ src: 'plugin/zoom-js/zoom.js', async: true, condition: function() { return !!document.body.classList; } },\
+		{ src: 'plugin/notes/notes.js', async: true, condition: function() { return !!document.body.classList; } }\
+	]\
+});\
+</script>";
+				var headHtml = "<style>" + cssText + "</style>";
+				var bodyHtml = "<div id='slides' class='slides'>" + $result.html() + "</div>";
+				var html = revealPrefix + headHtml + bodyHtml;
 				var blob = new Blob([html], {type: "text/html;charset=utf-8"});
 				saveAs(blob, "slides.html");
 			});

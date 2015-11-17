@@ -193,7 +193,7 @@ function processSingleSlide(zip, sldFileName, index, slideSize) {
 		"slideMasterTextStyles": slideMasterTextStyles
 	};
 	
-	var result = "<li class='slide'>" + sldFileName + "<section style='width:" + slideSize.width + "px; height:" + slideSize.height + "px;'>"
+	var result = "<section style='width:" + slideSize.width + "px; height:" + slideSize.height + "px;'>"
 	
 	for (var nodeKey in nodes) {
 		if (nodes[nodeKey].constructor === Array) {
@@ -205,7 +205,7 @@ function processSingleSlide(zip, sldFileName, index, slideSize) {
 		}
 	}
 	
-	return result + "</section></li>";
+	return result + "</section>";
 }
 
 function indexNodes(content) {
