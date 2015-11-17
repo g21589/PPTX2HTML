@@ -19,7 +19,7 @@ section {
 	border-radius: 10px;
 	box-shadow: 1px 1px 3px #AAA;
 	overflow: hidden;
-	transform: scale(0.85);
+	/*transform: scale(0.85);*/
 }
 
 section div.block {

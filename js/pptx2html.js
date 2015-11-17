@@ -94,11 +94,34 @@ $(document).ready(function() {
 			$.get("css/pptx2html.css", function (data) {
 				cssText = data;
 			}).done(function () {
+				var revealPrefix = 
+"<script type='text/javascript'>\
+Reveal.initialize({\
+	controls: true,\
+	progress: true,\
+	history: true,\
+	center: true,\
+	keyboard: true,\
+	slideNumber: true,\
+	\
+	theme: Reveal.getQueryHash().theme,\
+	transition: Reveal.getQueryHash().transition || 'default',\
+	\
+	dependencies: [\
+		{ src: 'lib/js/classList.js', condition: function() { return !document.body.classList; } },\
+		{ src: 'plugin/markdown/marked.js', condition: function() { return !!document.querySelector( '[data-markdown]' ); } },\
+		{ src: 'plugin/markdown/markdown.js', condition: function() { return !!document.querySelector( '[data-markdown]' ); } },\
+		{ src: 'plugin/highlight/highlight.js', async: true, callback: function() { hljs.initHighlightingOnLoad(); } },\
+		{ src: 'plugin/zoom-js/zoom.js', async: true, condition: function() { return !!document.body.classList; } },\
+		{ src: 'plugin/notes/notes.js', async: true, condition: function() { return !!document.body.classList; } }\
+	]\
+});\
+</script>";
 				var headHtml = "<style>" + cssText + "</style>";
-				var bodyHtml = $result.html();
-				var html = headHtml + bodyHtml;
+				var bodyHtml = "<div id='slides' class='slides'>" + $result.html() + "</div>";
+				var html = revealPrefix + headHtml + bodyHtml;
 				var blob = new Blob([html], {type: "text/html;charset=utf-8"});
-				saveAs(blob, "slides_r.html");
+				saveAs(blob, "slides.html");
 			});
 		});
 		
