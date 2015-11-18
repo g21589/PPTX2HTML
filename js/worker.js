@@ -177,7 +177,7 @@ function processSingleSlide(zip, sldFileName, index, slideSize) {
 	}
 	// Open slideMasterXX.xml
 	var slideMasterContent = readXmlFile(zip, masterFilename);
-	var slideMasterTextStyles = slideMasterContent["p:txStyles"];
+	var slideMasterTextStyles = getTextByPathList(slideMasterContent, ["p:sldMaster", "p:txStyles"]);
 	var slideMasterTables = indexNodes(slideMasterContent);
 	//debug(slideMasterTables);
 	
@@ -898,7 +898,9 @@ function genBuChar(node) {
 			
 			return "<span style='font-family: " + typeface + 
 					"; margin-left: " + marginLeft * lvl + "px" +
-					"; margin-right: " + marginRight + "px;'>" + buChar + "</span>";
+					"; margin-right: " + marginRight + "px" +
+					"; font-size: 20pt" +
+					"'>" + buChar + "</span>";
 		}
 	} else {
 		//buChar = '•';
@@ -1029,6 +1031,18 @@ function getVerticalAlign(node, slideLayoutSpNode, slideMasterSpNode, type, slid
 
 function getFontType(node, type, slideMasterTextStyles) {
 	var typeface = getTextByPathList(node, ["a:rPr", "a:latin", "attrs", "typeface"]);
+	
+	if (typeface === undefined) {
+		var fontSchemeNode = getTextByPathList(themeContent, ["a:theme", "a:themeElements", "a:fontScheme"]);
+		if (type == "title" || type == "subTitle" || type == "ctrTitle") {
+			typeface = getTextByPathList(fontSchemeNode, ["a:majorFont", "a:latin", "attrs", "typeface"]);
+		} else if (type == "body") {
+			typeface = getTextByPathList(fontSchemeNode, ["a:minorFont", "a:latin", "attrs", "typeface"]);
+		} else {
+			typeface = getTextByPathList(fontSchemeNode, ["a:minorFont", "a:latin", "attrs", "typeface"]);
+		}
+	}
+	
 	return (typeface === undefined) ? "inherit" : typeface;
 }
 
@@ -1046,19 +1060,19 @@ function getFontSize(node, slideLayoutSpNode, slideMasterSpNode, type, slideMast
 	if ((isNaN(fontSize) || fontSize === undefined)) {
 		var sz = getTextByPathList(slideLayoutSpNode, ["p:txBody", "a:lstStyle", "a:lvl1pPr", "a:defRPr", "attrs", "sz"]);
 		fontSize = parseInt(sz) / 100;
-	}	
-	/*
-	if ((isNaN(fontSize) || fontSize === undefined) && slideLayoutSpNode !== undefined && slideLayoutSpNode["a:defRPr"] !== undefined) {
-		fontSize = parseInt(slideLayoutSpNode["a:defRPr"]["attrs"]["sz"]) / 100;
 	}
-	*/
 	
-	if (isNaN(fontSize)) {
+	if (isNaN(fontSize) || fontSize === undefined) {
 		if (type == "title" || type == "subTitle" || type == "ctrTitle") {
-			fontSize = parseInt(getTextByPathList(slideMasterTextStyles, ["p:titleStyle", "a:lvl1pPr", "a:defRPr", "attrs", "sz"]));
+			var sz = getTextByPathList(slideMasterTextStyles, ["p:titleStyle", "a:lvl1pPr", "a:defRPr", "attrs", "sz"]);
+		} else if (type == "body") {
+			var sz = getTextByPathList(slideMasterTextStyles, ["p:bodyStyle", "a:lvl1pPr", "a:defRPr", "attrs", "sz"]);
+		} else if (type == "dt" || type == "sldNum") {
+			var sz = "1200";
 		} else if (type === undefined) {
-			fontSize = parseInt(getTextByPathList(slideMasterTextStyles, ["p:otherStyle", "a:lvl1pPr", "a:defRPr", "attrs", "sz"]));;
+			var sz = getTextByPathList(slideMasterTextStyles, ["p:otherStyle", "a:lvl1pPr", "a:defRPr", "attrs", "sz"]);
 		}
+		fontSize = parseInt(sz) / 100;
 	}
 	
 	var baseline = getTextByPathList(node, ["a:rPr", "attrs", "baseline"]);
