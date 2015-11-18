@@ -898,7 +898,9 @@ function genBuChar(node) {
 			
 			return "<span style='font-family: " + typeface + 
 					"; margin-left: " + marginLeft * lvl + "px" +
-					"; margin-right: " + marginRight + "px;'>" + buChar + "</span>";
+					"; margin-right: " + marginRight + "px" +
+					"; font-size: 20pt" +
+					"'>" + buChar + "</span>";
 		}
 	} else {
 		//buChar = '•';
@@ -1029,6 +1031,18 @@ function getVerticalAlign(node, slideLayoutSpNode, slideMasterSpNode, type, slid
 
 function getFontType(node, type, slideMasterTextStyles) {
 	var typeface = getTextByPathList(node, ["a:rPr", "a:latin", "attrs", "typeface"]);
+	
+	if (typeface === undefined) {
+		var fontSchemeNode = getTextByPathList(themeContent, ["a:theme", "a:themeElements", "a:fontScheme"]);
+		if (type == "title" || type == "subTitle" || type == "ctrTitle") {
+			typeface = getTextByPathList(fontSchemeNode, ["a:majorFont", "a:latin", "attrs", "typeface"]);
+		} else if (type == "body") {
+			typeface = getTextByPathList(fontSchemeNode, ["a:minorFont", "a:latin", "attrs", "typeface"]);
+		} else {
+			typeface = getTextByPathList(fontSchemeNode, ["a:minorFont", "a:latin", "attrs", "typeface"]);
+		}
+	}
+	
 	return (typeface === undefined) ? "inherit" : typeface;
 }
 
