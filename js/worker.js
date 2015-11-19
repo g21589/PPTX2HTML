@@ -457,8 +457,6 @@ function genShape(node, slideLayoutSpNode, slideMasterSpNode, id, name, idx, typ
 			case "actionButtonReturn":
 			case "actionButtonSound":
 			case "arc":
-			case "bentArrow":
-			case "bentUpArrow":
 			case "bevel":
 			case "blockArc":
 			case "borderCallout1":
@@ -475,23 +473,17 @@ function genShape(node, slideLayoutSpNode, slideMasterSpNode, id, name, idx, typ
 			case "chartX":
 			case "chevron":
 			case "chord":
-			case "circularArrow":
 			case "cloud":
 			case "cloudCallout":
 			case "corner":
 			case "cornerTabs":
 			case "cube":
-			case "curvedDownArrow":
-			case "curvedLeftArrow":
-			case "curvedRightArrow":
-			case "curvedUpArrow":
 			case "decagon":
 			case "diagStripe":
 			case "diamond":
 			case "dodecagon":
 			case "donut":
 			case "doubleWave":
-			case "downArrow":
 			case "downArrowCallout":
 			case "ellipseRibbon":
 			case "ellipseRibbon2":
@@ -541,14 +533,9 @@ function genShape(node, slideLayoutSpNode, slideMasterSpNode, id, name, idx, typ
 			case "leftArrowCallout":
 			case "leftBrace":
 			case "leftBracket":
-			case "leftCircularArrow":
-			case "leftRightArrow":
 			case "leftRightArrowCallout":
-			case "leftRightCircularArrow":
 			case "leftRightRibbon":
 			case "irregularSeal1":
-			case "leftRightUpArrow":
-			case "leftUpArrow":
 			case "lightningBolt":
 			case "lineInv":
 			case "mathDivide":
@@ -560,7 +547,6 @@ function genShape(node, slideLayoutSpNode, slideMasterSpNode, id, name, idx, typ
 			case "moon":
 			case "nonIsoscelesTrapezoid":
 			case "noSmoking":
-			case "notchedRightArrow":
 			case "octagon":
 			case "parallelogram":
 			case "pentagon":
@@ -569,7 +555,6 @@ function genShape(node, slideLayoutSpNode, slideMasterSpNode, id, name, idx, typ
 			case "plaque":
 			case "plaqueTabs":
 			case "plus":
-			case "quadArrow":
 			case "quadArrowCallout":
 			case "rect":
 			case "ribbon":
@@ -597,16 +582,11 @@ function genShape(node, slideLayoutSpNode, slideMasterSpNode, id, name, idx, typ
 			case "star6":
 			case "star7":
 			case "star8":
-			case "stripedRightArrow":
 			case "sun":
-			case "swooshArrow":
 			case "teardrop":
 			case "trapezoid":
-			case "upArrow":
 			case "upArrowCallout":
-			case "upDownArrow":
 			case "upDownArrowCallout":
-			case "uturnArrow":
 			case "verticalScroll":
 			case "wave":
 			case "wedgeEllipseCallout":
@@ -666,7 +646,39 @@ function genShape(node, slideLayoutSpNode, slideMasterSpNode, id, name, idx, typ
 				result += "/>";
 				break;
 			case "rightArrow":
+				result += "<defs><marker id=\"markerTriangle\" viewBox=\"0 0 10 10\" refX=\"1\" refY=\"5\" markerWidth=\"2.5\" markerHeight=\"2.5\" orient=\"auto-start-reverse\" markerUnits=\"strokeWidth\"><path d=\"M 0 0 L 10 5 L 0 10 z\" /></marker></defs>";
+				result += "<line x1='0' y1='" + (h/2) + "' x2='" + (w-15) + "' y2='" + (h/2) + "' stroke='" + border.color + 
+								"' stroke-width='" + (h/2) + "' stroke-dasharray='" + border.strokeDasharray + "' ";
+				result += "marker-end='url(#markerTriangle)' />";
+				break;
+			case "downArrow":
+				result += "<defs><marker id=\"markerTriangle\" viewBox=\"0 0 10 10\" refX=\"1\" refY=\"5\" markerWidth=\"2.5\" markerHeight=\"2.5\" orient=\"auto-start-reverse\" markerUnits=\"strokeWidth\"><path d=\"M 0 0 L 10 5 L 0 10 z\" /></marker></defs>";
+				result += "<line x1='" + (w/2) + "' y1='0' x2='" + (w/2) + "' y2='" + (h-15) + "' stroke='" + border.color + 
+								"' stroke-width='" + (w/2) + "' stroke-dasharray='" + border.strokeDasharray + "' ";
+				result += "marker-end='url(#markerTriangle)' />";
+				break;
+			case "bentArrow":
+			case "bentUpArrow":
+			case "stripedRightArrow":
+			case "quadArrow":
+			case "circularArrow":
+			case "swooshArrow":
+			case "leftRightArrow":
+			case "leftRightUpArrow":
+			case "leftUpArrow":
+			case "leftCircularArrow":
+			case "notchedRightArrow":
+			case "curvedDownArrow":
+			case "curvedLeftArrow":
+			case "curvedRightArrow":
+			case "curvedUpArrow":
+			case "upDownArrow":
+			case "upArrow":
+			case "uturnArrow":
+			case "leftRightCircularArrow":
+				break;
 			case "triangle":
+				break;
 			case undefined:
 			default:
 				console.warn("Undefine shape type.");
