@@ -125,6 +125,15 @@ Reveal.initialize({\
 			});
 		});
 		
+		$("#to-reveal-btn").click(function () {
+			if (localStorage) {
+				localStorage.setItem("slides", $result.html());
+				window.open("./reveal/demo.html", "_blank");
+			} else {
+				alert("Browser don't support Web Storage!");
+			}
+		});
+		
 	} else {
 		
 		alert("Browser don't support Web Worker!");
