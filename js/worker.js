@@ -15,6 +15,9 @@ var titleFontSize = 42;
 var bodyFontSize = 20;
 var otherFontSize = 16;
 
+var offsetStack = new Array();
+var offset = {"dx": 0, "dy": 0, "dw": 0, "dh": 0};
+
 onmessage = function(e) {
 	
 	var dateBefore = new Date();
@@ -119,6 +122,9 @@ function processSingleSlide(zip, sldFileName, index, slideSize) {
 		"type": "INFO",
 		"data": "Processing slide" + (index + 1)
 	});
+	
+	offsetStack = [];
+	offset = {"dx": 0, "dy": 0, "dw": 0, "dh": 0};
 	
 	// =====< Step 1 >=====
 	// Read relationship filename of the slide (Get slideLayoutXX.xml)
@@ -283,7 +289,7 @@ function processNodesInSlide(nodeKey, nodeValue, warpObj, depth) {
 			break;
 		case "p:grpSp":	// 群組
 			var order = nodeValue["attrs"]["order"];
-			result += "<div class='block group' style='z-index: " + order + ";";			
+			result += "<div class='block group' style='z-index: " + order + ";' >";			
 			for (var nodeKey in nodeValue) {
 				if (nodeValue[nodeKey].constructor === Array) {
 					for (var i=0; i<nodeValue[nodeKey].length; i++) {
@@ -293,6 +299,9 @@ function processNodesInSlide(nodeKey, nodeValue, warpObj, depth) {
 					result += processNodesInSlide(nodeKey, nodeValue[nodeKey], warpObj, depth + 1);
 				}
 			}
+			//dx = 0, dy = 0, dw = 0, dh = 0;
+			offset = offsetStack.pop();
+			debug(offsetStack);
 			result += "</div>";
 			break;
 		case "p:nvGrpSpPr":
@@ -301,7 +310,7 @@ function processNodesInSlide(nodeKey, nodeValue, warpObj, depth) {
 			break;
 		case "p:grpSpPr":
 			// size
-			if (depth > 0) {
+			//if (depth > 0) {
 				var xfrmNode = nodeValue["a:xfrm"];
 				var x = parseInt(xfrmNode["a:off"]["attrs"]["x"]) * 96 / 914400;
 				var y = parseInt(xfrmNode["a:off"]["attrs"]["y"]) * 96 / 914400;
@@ -311,8 +320,14 @@ function processNodesInSlide(nodeKey, nodeValue, warpObj, depth) {
 				var cy = parseInt(xfrmNode["a:ext"]["attrs"]["cy"]) * 96 / 914400;
 				var chcx = parseInt(xfrmNode["a:chExt"]["attrs"]["cx"]) * 96 / 914400;
 				var chcy = parseInt(xfrmNode["a:chExt"]["attrs"]["cy"]) * 96 / 914400;
-				result = " top: " + (y - chy) + "px; left: " + (x - chx) + "px; width: " + (cx - chcx) + "px; height: " + (cy - chcy) + "px;'>";
-			}
+				offset = {
+					"dx": x - chx, "dy": y - chy,
+					"dw": cx - chcx, "dh": cy - chcy
+				};
+				offsetStack.push(offset);
+				debug(offsetStack);
+				//result = " top: " + (y - chy) + "px; left: " + (x - chx) + "px; width: " + (cx - chcx) + "px; height: " + (cy - chcy) + "px;'>";
+			//}
 			break;
 		default:
 	}
@@ -408,12 +423,12 @@ function genShape(node, slideLayoutSpNode, slideMasterSpNode, id, name, idx, typ
 	if (shapType !== undefined) {
 		
 		var off = getTextByPathList(slideXfrmNode, ["a:off", "attrs"]);
-		var x = parseInt(off["x"]) * 96 / 914400;
-		var y = parseInt(off["y"]) * 96 / 914400;
+		var x = parseInt(off["x"]) * 96 / 914400 + offset.dx;
+		var y = parseInt(off["y"]) * 96 / 914400 + offset.dy;
 		
 		var ext = getTextByPathList(slideXfrmNode, ["a:ext", "attrs"]);
-		var w = parseInt(ext["cx"]) * 96 / 914400;
-		var h = parseInt(ext["cy"]) * 96 / 914400;
+		var w = parseInt(ext["cx"]) * 96 / 914400 + offset.dw;
+		var h = parseInt(ext["cy"]) * 96 / 914400 + offset.dh;
 		
 		result += "<svg class='drawing' _id='" + id + "' _idx='" + idx + "' _type='" + type + "' _name='" + name +
 				"' style='" + 
@@ -963,8 +978,9 @@ function getPosition(slideSpNode, slideLayoutSpNode, slideMasterSpNode) {
 	if (off === undefined) {
 		return "";
 	} else {
-		x = parseInt(off["x"]) * 96 / 914400;
-		y = parseInt(off["y"]) * 96 / 914400;
+		//offset = offsetStack[offsetStack.length - 1];
+		x = parseInt(off["x"]) * 96 / 914400 + offset.dx;
+		y = parseInt(off["y"]) * 96 / 914400 + offset.dy;
 		return (isNaN(x) || isNaN(y)) ? "" : "top:" + y + "px; left:" + x + "px;";
 	}
 	
@@ -989,8 +1005,14 @@ function getSize(slideSpNode, slideLayoutSpNode, slideMasterSpNode) {
 	if (ext === undefined) {
 		return "";
 	} else {
-		w = parseInt(ext["cx"]) * 96 / 914400;
-		h = parseInt(ext["cy"]) * 96 / 914400;
+		w = parseInt(ext["cx"]) * 96 / 914400 + offset.dw;
+		h = parseInt(ext["cy"]) * 96 / 914400 + offset.dh;
+		if (w < 0) {
+			w = parseInt(ext["cx"]) * 96 / 914400;
+		}
+		if (h < 0) {
+			h = parseInt(ext["cy"]) * 96 / 914400;
+		}
 		return (isNaN(w) || isNaN(h)) ? "" : "width:" + w + "px; height:" + h + "px;";
 	}	
 	
