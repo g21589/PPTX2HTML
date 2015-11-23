@@ -198,10 +198,10 @@ function processSingleSlide(zip, sldFileName, index, slideSize) {
 	for (var nodeKey in nodes) {
 		if (nodes[nodeKey].constructor === Array) {
 			for (var i=0; i<nodes[nodeKey].length; i++) {
-				result += processNodesInSlide(nodeKey, nodes[nodeKey][i], warpObj, 0);
+				result += processNodesInSlide(nodeKey, nodes[nodeKey][i], warpObj);
 			}
 		} else {
-			result += processNodesInSlide(nodeKey, nodes[nodeKey], warpObj, 0);
+			result += processNodesInSlide(nodeKey, nodes[nodeKey], warpObj);
 		}
 	}
 	
@@ -264,7 +264,7 @@ function indexNodes(content) {
 	return {"idTable": idTable, "idxTable": idxTable, "typeTable": typeTable};
 }
 
-function processNodesInSlide(nodeKey, nodeValue, warpObj, depth) {
+function processNodesInSlide(nodeKey, nodeValue, warpObj) {
 	
 	var result = "";
 	
@@ -282,7 +282,7 @@ function processNodesInSlide(nodeKey, nodeValue, warpObj, depth) {
 			result = processGraphicFrameNode(nodeValue, warpObj);
 			break;
 		case "p:grpSp":	// 群組
-			result = processGroupSpNode(nodeValue, warpObj, depth);
+			result = processGroupSpNode(nodeValue, warpObj);
 			break;
 		default:
 	}
@@ -291,7 +291,7 @@ function processNodesInSlide(nodeKey, nodeValue, warpObj, depth) {
 	
 }
 
-function processGroupSpNode(node, warpObj, depth) {
+function processGroupSpNode(node, warpObj) {
 	
 	var factor = 96 / 914400;
 	
@@ -309,15 +309,17 @@ function processGroupSpNode(node, warpObj, depth) {
 	
 	var result = "<div class='block group' style='z-index: " + order + "; top: " + (y - chy) + "px; left: " + (x - chx) + "px; width: " + (cx - chcx) + "px; height: " + (cy - chcy) + "px;'>";
 	
+	// Procsee all child nodes
 	for (var nodeKey in node) {
 		if (node[nodeKey].constructor === Array) {
 			for (var i=0; i<node[nodeKey].length; i++) {
-				result += processNodesInSlide(nodeKey, node[nodeKey][i], warpObj, depth + 1);
+				result += processNodesInSlide(nodeKey, node[nodeKey][i], warpObj);
 			}
 		} else {
-			result += processNodesInSlide(nodeKey, node[nodeKey], warpObj, depth + 1);
+			result += processNodesInSlide(nodeKey, node[nodeKey], warpObj);
 		}
 	}
+	
 	result += "</div>";
 	
 	return result;
@@ -1138,6 +1140,11 @@ function getBorder(node, isSvgMode) {
 	
 	// Border color
 	var borderColor = getTextByPathList(lineNode, ["a:solidFill", "a:srgbClr", "attrs", "val"]);
+	if (borderColor === undefined) {
+		var schemeClrNode = getTextByPathList(lineNode, ["a:solidFill", "a:schemeClr"]);
+		var schemeClr = "a:" + getTextByPathList(schemeClrNode, ["attrs", "val"]);	
+		var borderColor = getSchemeColorFromTheme(schemeClr);
+	}
 	
 	// 2. drawingML namespace
 	if (borderColor === undefined) {
@@ -1287,6 +1294,14 @@ function getFill(node, isSvgMode) {
 }
 
 function getSchemeColorFromTheme(schemeClr) {
+	// TODO: <p:clrMap ...> in slide master
+	// e.g. tx2="dk2" bg2="lt2" tx1="dk1" bg1="lt1"
+	switch (schemeClr) {
+		case "a:tx1": schemeClr = "a:dk1"; break;
+		case "a:tx2": schemeClr = "a:dk2"; break;
+		case "a:bg1": schemeClr = "a:lt1"; break;
+		case "a:bg2": schemeClr = "a:lt2"; break;
+	}
 	var refNode = getTextByPathList(themeContent, ["a:theme", "a:themeElements", "a:clrScheme", schemeClr]);
 	var color = getTextByPathList(refNode, ["a:srgbClr", "attrs", "val"]);
 	if (color === undefined) {
