@@ -270,55 +270,57 @@ function processNodesInSlide(nodeKey, nodeValue, warpObj, depth) {
 	
 	switch (nodeKey) {
 		case "p:sp":	// Shape, Text
-			result += processSpNode(nodeValue, warpObj);
+			result = processSpNode(nodeValue, warpObj);
 			break;
 		case "p:cxnSp":	// Shape, Text (with connection)
-			result += processCxnSpNode(nodeValue, warpObj);
+			result = processCxnSpNode(nodeValue, warpObj);
 			break;
 		case "p:pic":	// Picture
-			result += processPicNode(nodeValue, warpObj);
+			result = processPicNode(nodeValue, warpObj);
 			break;
 		case "p:graphicFrame":	// Chart, Diagram, Table
-			result += processGraphicFrameNode(nodeValue, warpObj);
+			result = processGraphicFrameNode(nodeValue, warpObj);
 			break;
 		case "p:grpSp":	// 群組
-			var order = nodeValue["attrs"]["order"];
-			result += "<div class='block group' style='z-index: " + order + ";";			
-			for (var nodeKey in nodeValue) {
-				if (nodeValue[nodeKey].constructor === Array) {
-					for (var i=0; i<nodeValue[nodeKey].length; i++) {
-						result += processNodesInSlide(nodeKey, nodeValue[nodeKey][i], warpObj, depth + 1);
-					}
-				} else {
-					result += processNodesInSlide(nodeKey, nodeValue[nodeKey], warpObj, depth + 1);
-				}
-			}
-			result += "</div>";
-			break;
-		case "p:nvGrpSpPr":
-			// id
-			//$node.find("cNvPr").attr("id");
-			break;
-		case "p:grpSpPr":
-			// size
-			if (depth > 0) {
-				var xfrmNode = nodeValue["a:xfrm"];
-				var x = parseInt(xfrmNode["a:off"]["attrs"]["x"]) * 96 / 914400;
-				var y = parseInt(xfrmNode["a:off"]["attrs"]["y"]) * 96 / 914400;
-				var chx = parseInt(xfrmNode["a:chOff"]["attrs"]["x"]) * 96 / 914400;
-				var chy = parseInt(xfrmNode["a:chOff"]["attrs"]["y"]) * 96 / 914400;
-				var cx = parseInt(xfrmNode["a:ext"]["attrs"]["cx"]) * 96 / 914400;
-				var cy = parseInt(xfrmNode["a:ext"]["attrs"]["cy"]) * 96 / 914400;
-				var chcx = parseInt(xfrmNode["a:chExt"]["attrs"]["cx"]) * 96 / 914400;
-				var chcy = parseInt(xfrmNode["a:chExt"]["attrs"]["cy"]) * 96 / 914400;
-				result = " top: " + (y - chy) + "px; left: " + (x - chx) + "px; width: " + (cx - chcx) + "px; height: " + (cy - chcy) + "px;'>";
-			}
+			result = processGroupSpNode(nodeValue, warpObj, depth);
 			break;
 		default:
 	}
 	
 	return result;
 	
+}
+
+function processGroupSpNode(node, warpObj, depth) {
+	
+	var factor = 96 / 914400;
+	
+	var xfrmNode = node["p:grpSpPr"]["a:xfrm"];
+	var x = parseInt(xfrmNode["a:off"]["attrs"]["x"]) * factor;
+	var y = parseInt(xfrmNode["a:off"]["attrs"]["y"]) * factor;
+	var chx = parseInt(xfrmNode["a:chOff"]["attrs"]["x"]) * factor;
+	var chy = parseInt(xfrmNode["a:chOff"]["attrs"]["y"]) * factor;
+	var cx = parseInt(xfrmNode["a:ext"]["attrs"]["cx"]) * factor;
+	var cy = parseInt(xfrmNode["a:ext"]["attrs"]["cy"]) * factor;
+	var chcx = parseInt(xfrmNode["a:chExt"]["attrs"]["cx"]) * factor;
+	var chcy = parseInt(xfrmNode["a:chExt"]["attrs"]["cy"]) * factor;
+	
+	var order = node["attrs"]["order"];
+	
+	var result = "<div class='block group' style='z-index: " + order + "; top: " + (y - chy) + "px; left: " + (x - chx) + "px; width: " + (cx - chcx) + "px; height: " + (cy - chcy) + "px;'>";
+	
+	for (var nodeKey in node) {
+		if (node[nodeKey].constructor === Array) {
+			for (var i=0; i<node[nodeKey].length; i++) {
+				result += processNodesInSlide(nodeKey, node[nodeKey][i], warpObj, depth + 1);
+			}
+		} else {
+			result += processNodesInSlide(nodeKey, node[nodeKey], warpObj, depth + 1);
+		}
+	}
+	result += "</div>";
+	
+	return result;
 }
 
 function processSpNode(node, warpObj) {
