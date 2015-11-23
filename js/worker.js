@@ -335,8 +335,8 @@ function processSpNode(node, warpObj) {
 	 *  966 </xsd:complexType>
 	 */
 	
-	var id = node["p:nvSpPr"]["p:cNvSpPr"]["attrs"]["id"];
-	var name = node["p:nvSpPr"]["p:cNvSpPr"]["attrs"]["name"];
+	var id = node["p:nvSpPr"]["p:cNvPr"]["attrs"]["id"];
+	var name = node["p:nvSpPr"]["p:cNvPr"]["attrs"]["name"];
 	var idx = (node["p:nvSpPr"]["p:nvPr"]["p:ph"] === undefined) ? undefined : node["p:nvSpPr"]["p:nvPr"]["p:ph"]["attrs"]["idx"];
 	var type = (node["p:nvSpPr"]["p:nvPr"]["p:ph"] === undefined) ? undefined : node["p:nvSpPr"]["p:nvPr"]["p:ph"]["attrs"]["type"];
 	var order = node["attrs"]["order"];
