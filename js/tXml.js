@@ -61,7 +61,6 @@ function tXml(S) {
 					pos++;
                     continue;
 				}
-				var node = {};
 				pos++;
 				var startNamePos = pos;
 				for (; nameSpacer.indexOf(S[pos]) === -1; pos++) {}
@@ -69,12 +68,13 @@ function tXml(S) {
 
 				// Parsing attributes
 				var attrFound = false;
-				while (S.charCodeAt(pos) !== closeBracketCC) {
+				var node_attributes = {};
+				for (; S.charCodeAt(pos) !== closeBracketCC; pos++) {
 					var c = S.charCodeAt(pos);
 					if ((c > 64 && c < 91) || (c > 96 && c < 123)) {
 						startNamePos = pos;
 						for (; nameSpacer.indexOf(S[pos]) === -1; pos++) {}
-						var name = S.slice(startNamePos,pos);
+						var name = S.slice(startNamePos, pos);
 						// search beginning of the string
 						var code = S.charCodeAt(pos);
 						while (code !== singleQuoteCC && code !== doubleQuoteCC) {
@@ -84,15 +84,14 @@ function tXml(S) {
 						
 						var startChar = S[pos];
 						var startStringPos= ++pos;
-						pos = S.indexOf(startChar,startStringPos);
-						var value = S.slice(startStringPos,pos);
+						pos = S.indexOf(startChar, startStringPos);
+						var value = S.slice(startStringPos, pos);
 						if (!attrFound) {
-							var node_attributes = {};
+							node_attributes = {};
 							attrFound = true;
 						}
 						node_attributes[name] = value;
 					}
-					pos++;
 				}
 				
 				// Optional parsing of children

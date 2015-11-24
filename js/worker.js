@@ -778,10 +778,21 @@ function processGraphicFrameNode(node, warpObj) {
 				for (var i=0; i<trNodes.length; i++) {
 					tableHtml += "<tr>";
 					var tcNodes = trNodes[i]["a:tc"];
+					
 					if (tcNodes.constructor === Array) {
 						for (var j=0; j<tcNodes.length; j++) {
-							var text = genTextBody(tcNodes[j]["a:txBody"]);
-							tableHtml += "<td>" + text + "</td>";
+							var text = genTextBody(tcNodes[j]["a:txBody"]);							
+							var rowSpan = getTextByPathList(tcNodes[j], ["attrs", "rowSpan"]);
+							var colSpan = getTextByPathList(tcNodes[j], ["attrs", "gridSpan"]);
+							var vMerge = getTextByPathList(tcNodes[j], ["attrs", "vMerge"]);
+							var hMerge = getTextByPathList(tcNodes[j], ["attrs", "hMerge"]);
+							if (rowSpan !== undefined) {
+								tableHtml += "<td rowspan='" + parseInt(rowSpan) + "'>" + text + "</td>";
+							} else if (colSpan !== undefined) {
+								tableHtml += "<td colspan='" + parseInt(colSpan) + "'>" + text + "</td>";
+							} else if (vMerge === undefined && hMerge === undefined) {
+								tableHtml += "<td>" + text + "</td>";
+							}
 						}
 					} else {
 						var text = genTextBody(tcNodes["a:txBody"]);

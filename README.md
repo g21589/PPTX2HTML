@@ -9,7 +9,7 @@ Here is the [Online DEMO] page.
 Version
 ----
 
-0.2.0 (Beta Test)
+0.2.5 (Beta Test)
 
 License
 ----
