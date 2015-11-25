@@ -184,6 +184,10 @@ function processSingleSlide(zip, sldFileName, index, slideSize) {
 	
 	// =====< Step 3 >=====
 	var content = readXmlFile(zip, sldFileName);
+	var bgColor = getTextByPathList(content, ["p:sld", "p:cSld", "p:bg", "p:bgPr", "a:solidFill", "a:srgbClr", "attrs", "val"]);
+	if (bgColor === undefined) {
+		bgColor = "FFF";
+	}
 	var nodes = content["p:sld"]["p:cSld"]["p:spTree"];
 	var warpObj = {
 		"zip": zip,
@@ -193,7 +197,7 @@ function processSingleSlide(zip, sldFileName, index, slideSize) {
 		"slideMasterTextStyles": slideMasterTextStyles
 	};
 	
-	var result = "<section style='width:" + slideSize.width + "px; height:" + slideSize.height + "px;'>"
+	var result = "<section style='width:" + slideSize.width + "px; height:" + slideSize.height + "px; background-color: #" + bgColor + "'>"
 	
 	for (var nodeKey in nodes) {
 		if (nodes[nodeKey].constructor === Array) {
