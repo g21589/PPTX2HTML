@@ -1,0 +1,2 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<table xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" id="1" name="表格1" displayName="表格1" ref="A1:D5" totalsRowShown="0"><tableColumns count="4"><tableColumn id="1" name=" "/><tableColumn id="2" name="數列 1"/><tableColumn id="3" name="數列 2"/><tableColumn id="4" name="數列 3"/></tableColumns><tableStyleInfo showFirstColumn="0" showLastColumn="0" showRowStripes="1" showColumnStripes="0"/></table>

@@ -821,8 +821,12 @@ function processGraphicFrameNode(node, warpObj) {
 			result = tableHtml;
 			break;
 		case "http://schemas.openxmlformats.org/drawingml/2006/chart":
+			var xfrmNode = getTextByPathList(node, ["p:xfrm"]);
+			result = "<div class='block content' style='border: 1px dotted;" + getPosition(xfrmNode, undefined, undefined) + getSize(xfrmNode, undefined, undefined) + "'>TODO: chart</div>";
 			break;
 		case "http://schemas.openxmlformats.org/drawingml/2006/diagram":
+			var xfrmNode = getTextByPathList(node, ["p:xfrm"]);
+			result = "<div class='block content' style='border: 1px dotted;" + getPosition(xfrmNode, undefined, undefined) + getSize(xfrmNode, undefined, undefined) + "'>TODO: diagram</div>";
 			break;
 		default:
 	}
