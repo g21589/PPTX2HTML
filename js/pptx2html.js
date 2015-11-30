@@ -36,12 +36,74 @@ $(document).ready(function() {
 							case "slide":
 								$result.append(msg.data);
 								break;
+							case "processMsgQueue":
+								var queue = msg.data;
+								for (var i=0; i<queue.length; i++) {
+									
+									queue[i].data.chartID;
+									queue[i].data.chartType;
+									var d = queue[i].data.chartData;
+									/*
+									var sin = [], cos = [];
+									
+									for (var j = 0; j < 100; j++) {
+										sin.push({x: j, y: Math.sin(j/10)});
+										cos.push({x: j, y: .5 * Math.cos(j/10)});
+									}
+									
+									var data =  [{
+										values: sin,
+										key: 'Sine Wave',
+										color: '#ff7f0e'
+									}, {
+										values: cos,
+										key: 'Cosine Wave',
+										color: '#2ca02c'
+									}];
+									*/
+									var data =  [];
+									for (var j=0; j<d.length; j++) {
+										var arr = [];
+										for (var k=0; k<d[j].length; k++) {
+											arr.push({x: k, y: d[j][k]});
+										}
+										data.push({
+											key: 'data' + (j + 1),
+											values: arr
+										});
+									}
+									
+									var chart = nv.models.lineChart()
+										.useInteractiveGuideline(true);
+									
+									chart.xAxis
+										.axisLabel('X')
+										.tickFormat(d3.format(',r'));
+									
+									chart.yAxis
+										.axisLabel('Y')
+										.tickFormat(d3.format('.02f'));
+									
+									//document.getElementById("#" + queue[i].data.chartID).innerHTML = "";
+									d3.select("#" + queue[i].data.chartID)
+										.append("svg")
+										.datum(data)
+										.transition().duration(500)
+										.call(chart);
+									
+									nv.utils.windowResize(chart.update);
+									
+								}
+								break;
 							case "pptx-thumb":
 								$("#pptx-thumb").attr("src", "data:image/jpeg;base64," + msg.data);
 								break;
 							case "ExecutionTime":
 								$("#info_block").html("Execution Time: " + msg.data + " (ms)");
 								isDone = true;
+								worker.postMessage({
+									"type": "getMsgQueue"
+								});
 								break;
 							case "WARN":
 								console.warn('Worker: ', msg.data);
@@ -61,7 +123,10 @@ $(document).ready(function() {
 						
 					}, false);
 					
-					worker.postMessage(e.target.result);
+					worker.postMessage({
+						"type": "processPPTX",
+						"data": e.target.result
+					});
 					
 				}
 			})(fileName);

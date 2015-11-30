@@ -97,7 +97,7 @@ function tXml(S) {
 				// Optional parsing of children
 				if (S.charCodeAt(pos-1) !== slashCC) {
 					pos++;
-					var node_children = parseChildren(name);
+					var node_children = parseChildren();
 				}
 				
                 children.push({
@@ -158,15 +158,7 @@ function simplefy(children) {
 			}
 			_order++;
             node[child.tagName].push(kids);
-        }/* else {
-			//if (child["attrs"] === undefined) {
-			//	child["attrs"] = {};
-			//}
-			//child.attrs.order = order;
-			console.log(child);
-            node[child.tagName].push(child);
         }
-		*/
     });
     
     for (var i in node) {

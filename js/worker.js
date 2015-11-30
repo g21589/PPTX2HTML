@@ -9,7 +9,11 @@ importScripts(
 	'./functions.js'
 );
 
+var MsgQueue = new Array();
+
 var themeContent = null;
+
+var chartID = 0;
 
 var titleFontSize = 42;
 var bodyFontSize = 20;
@@ -17,9 +21,26 @@ var otherFontSize = 16;
 
 onmessage = function(e) {
 	
+	switch (e.data.type) {
+		case "processPPTX":
+			processPPTX(e.data.data);
+			break;
+		case "getMsgQueue":
+			self.postMessage({
+				"type": "processMsgQueue",
+				"data": MsgQueue
+			});
+			break;
+		default:
+	}
+
+}
+
+function processPPTX(data) {
+	
 	var dateBefore = new Date();
 	
-	var zip = new JSZip(e.data);
+	var zip = new JSZip(data);
 	
 	if (zip.file("docProps/thumbnail.jpeg") !== null) {
 		var pptxThumbImg = base64ArrayBuffer(zip.file("docProps/thumbnail.jpeg").asArrayBuffer());
@@ -184,6 +205,10 @@ function processSingleSlide(zip, sldFileName, index, slideSize) {
 	
 	// =====< Step 3 >=====
 	var content = readXmlFile(zip, sldFileName);
+	var bgColor = getTextByPathList(content, ["p:sld", "p:cSld", "p:bg", "p:bgPr", "a:solidFill", "a:srgbClr", "attrs", "val"]);
+	if (bgColor === undefined) {
+		bgColor = "FFF";
+	}
 	var nodes = content["p:sld"]["p:cSld"]["p:spTree"];
 	var warpObj = {
 		"zip": zip,
@@ -193,7 +218,7 @@ function processSingleSlide(zip, sldFileName, index, slideSize) {
 		"slideMasterTextStyles": slideMasterTextStyles
 	};
 	
-	var result = "<section style='width:" + slideSize.width + "px; height:" + slideSize.height + "px;'>"
+	var result = "<section style='width:" + slideSize.width + "px; height:" + slideSize.height + "px; background-color: #" + bgColor + "'>"
 	
 	for (var nodeKey in nodes) {
 		if (nodes[nodeKey].constructor === Array) {
@@ -817,8 +842,48 @@ function processGraphicFrameNode(node, warpObj) {
 			result = tableHtml;
 			break;
 		case "http://schemas.openxmlformats.org/drawingml/2006/chart":
+			var xfrmNode = getTextByPathList(node, ["p:xfrm"]);
+			result = "<div id='chart" + chartID + "' class='block content' style='border: 1px dotted;" + getPosition(xfrmNode, undefined, undefined) + getSize(xfrmNode, undefined, undefined) + "'></div>";
+			var rid = node["a:graphic"]["a:graphicData"]["c:chart"]["attrs"]["r:id"];
+			var refName = warpObj["slideResObj"][rid]["target"];
+			var content = readXmlFile(warpObj["zip"], refName);
+			var plotArea = getTextByPathList(content, ["c:chartSpace", "c:chart", "c:plotArea"]);
+			for (var key in plotArea) {
+				switch (key) {
+					case "c:lineChart":
+						var dataMat = new Array();
+						/*result +=*/eachElement(plotArea["c:lineChart"]["c:ser"], function(innerNode) {
+							//var result = "";
+							var dataRow = new Array();
+							/*result +=*/eachElement(innerNode["c:val"]["c:numRef"]["c:numCache"]["c:pt"], function(innerNode) {
+								//var result = innerNode["c:v"] + "&nbsp;";
+								dataRow.push(parseFloat(innerNode["c:v"]));
+								return "";
+							});
+							dataMat.push(dataRow);
+							return "";
+						});
+						MsgQueue.push({
+							"type": "createChart",
+							"data": {
+								"chartID": "chart" + chartID,
+								"chartType": "lineChart",
+								"chartData": dataMat
+							}
+						});
+						break;
+					case "c:catAx":
+						break;
+					case "c:valAx":
+						break;
+					default:
+				}
+			}
+			chartID++;
 			break;
 		case "http://schemas.openxmlformats.org/drawingml/2006/diagram":
+			var xfrmNode = getTextByPathList(node, ["p:xfrm"]);
+			result = "<div class='block content' style='border: 1px dotted;" + getPosition(xfrmNode, undefined, undefined) + getSize(xfrmNode, undefined, undefined) + "'>TODO: diagram</div>";
 			break;
 		default:
 	}
@@ -1358,19 +1423,24 @@ function getTextByPathList(node, path) {
 }
 
 /**
- * eachChild
+ * eachElement
  * @param {Object} node
  * @param {function} doFunction
  */
-function eachChild(node, doFunction) {
+function eachElement(node, doFunction) {
+	if (node === undefined) {
+		return;
+	}
+	var result = "";
 	if (node.constructor === Array) {
 		var l = node.length;
 		for (var i=0; i<l; i++) {
-			doFunction(node[i]);
+			result += doFunction(node[i]);
 		}
 	} else {
-		doFunction(node);
+		result += doFunction(node);
 	}
+	return result;
 }
 
 // ===== Color functions =====
