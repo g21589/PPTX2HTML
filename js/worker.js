@@ -11,6 +11,8 @@ importScripts(
 
 var themeContent = null;
 
+var chartID = 0;
+
 var titleFontSize = 42;
 var bodyFontSize = 20;
 var otherFontSize = 16;
@@ -822,7 +824,31 @@ function processGraphicFrameNode(node, warpObj) {
 			break;
 		case "http://schemas.openxmlformats.org/drawingml/2006/chart":
 			var xfrmNode = getTextByPathList(node, ["p:xfrm"]);
-			result = "<div class='block content' style='border: 1px dotted;" + getPosition(xfrmNode, undefined, undefined) + getSize(xfrmNode, undefined, undefined) + "'>TODO: chart</div>";
+			result = "<div id='chart" + chartID + "' class='block content' style='border: 1px dotted;" + getPosition(xfrmNode, undefined, undefined) + getSize(xfrmNode, undefined, undefined) + "'>TODO: chart</div>";
+			var rid = node["a:graphic"]["a:graphicData"]["c:chart"]["attrs"]["r:id"];
+			var refName = warpObj["slideResObj"][rid]["target"];
+			var content = readXmlFile(warpObj["zip"], refName);
+			var plotArea = getTextByPathList(content, ["c:chartSpace", "c:chart", "c:plotArea"]);
+			for (var key in plotArea) {
+				switch (key) {
+					case "c:lineChart":
+						result += eachElement(plotArea["c:lineChart"]["c:ser"], function(innerNode) {
+							var result = "";
+							result += eachElement(innerNode["c:val"]["c:numRef"]["c:numCache"]["c:pt"], function(innerNode) {
+								var result = innerNode["c:v"] + "&nbsp;";
+								return result;
+							});
+							return result + "<br>";
+						});
+						break;
+					case "c:catAx":
+						break;
+					case "c:valAx":
+						break;
+					default:
+				}
+			}
+			chartID++;
 			break;
 		case "http://schemas.openxmlformats.org/drawingml/2006/diagram":
 			var xfrmNode = getTextByPathList(node, ["p:xfrm"]);
@@ -1366,19 +1392,24 @@ function getTextByPathList(node, path) {
 }
 
 /**
- * eachChild
+ * eachElement
  * @param {Object} node
  * @param {function} doFunction
  */
-function eachChild(node, doFunction) {
+function eachElement(node, doFunction) {
+	if (node === undefined) {
+		return;
+	}
+	var result = "";
 	if (node.constructor === Array) {
 		var l = node.length;
 		for (var i=0; i<l; i++) {
-			doFunction(node[i]);
+			result += doFunction(node[i]);
 		}
 	} else {
-		doFunction(node);
+		result += doFunction(node);
 	}
+	return result;
 }
 
 // ===== Color functions =====
