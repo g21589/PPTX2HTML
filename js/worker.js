@@ -9,6 +9,8 @@ importScripts(
 	'./functions.js'
 );
 
+var MsgQueue = new Array();
+
 var themeContent = null;
 
 var chartID = 0;
@@ -19,9 +21,26 @@ var otherFontSize = 16;
 
 onmessage = function(e) {
 	
+	switch (e.data.type) {
+		case "processPPTX":
+			processPPTX(e.data.data);
+			break;
+		case "getMsgQueue":
+			self.postMessage({
+				"type": "processMsgQueue",
+				"data": MsgQueue
+			});
+			break;
+		default:
+	}
+
+}
+
+function processPPTX(data) {
+	
 	var dateBefore = new Date();
 	
-	var zip = new JSZip(e.data);
+	var zip = new JSZip(data);
 	
 	if (zip.file("docProps/thumbnail.jpeg") !== null) {
 		var pptxThumbImg = base64ArrayBuffer(zip.file("docProps/thumbnail.jpeg").asArrayBuffer());
@@ -824,7 +843,7 @@ function processGraphicFrameNode(node, warpObj) {
 			break;
 		case "http://schemas.openxmlformats.org/drawingml/2006/chart":
 			var xfrmNode = getTextByPathList(node, ["p:xfrm"]);
-			result = "<div id='chart" + chartID + "' class='block content' style='border: 1px dotted;" + getPosition(xfrmNode, undefined, undefined) + getSize(xfrmNode, undefined, undefined) + "'>TODO: chart</div>";
+			result = "<div id='chart" + chartID + "' class='block content' style='border: 1px dotted;" + getPosition(xfrmNode, undefined, undefined) + getSize(xfrmNode, undefined, undefined) + "'></div>";
 			var rid = node["a:graphic"]["a:graphicData"]["c:chart"]["attrs"]["r:id"];
 			var refName = warpObj["slideResObj"][rid]["target"];
 			var content = readXmlFile(warpObj["zip"], refName);
@@ -832,13 +851,25 @@ function processGraphicFrameNode(node, warpObj) {
 			for (var key in plotArea) {
 				switch (key) {
 					case "c:lineChart":
-						result += eachElement(plotArea["c:lineChart"]["c:ser"], function(innerNode) {
-							var result = "";
-							result += eachElement(innerNode["c:val"]["c:numRef"]["c:numCache"]["c:pt"], function(innerNode) {
-								var result = innerNode["c:v"] + "&nbsp;";
-								return result;
+						var dataMat = new Array();
+						/*result +=*/eachElement(plotArea["c:lineChart"]["c:ser"], function(innerNode) {
+							//var result = "";
+							var dataRow = new Array();
+							/*result +=*/eachElement(innerNode["c:val"]["c:numRef"]["c:numCache"]["c:pt"], function(innerNode) {
+								//var result = innerNode["c:v"] + "&nbsp;";
+								dataRow.push(parseFloat(innerNode["c:v"]));
+								return "";
 							});
-							return result + "<br>";
+							dataMat.push(dataRow);
+							return "";
+						});
+						MsgQueue.push({
+							"type": "createChart",
+							"data": {
+								"chartID": "chart" + chartID,
+								"chartType": "lineChart",
+								"chartData": dataMat
+							}
 						});
 						break;
 					case "c:catAx":
