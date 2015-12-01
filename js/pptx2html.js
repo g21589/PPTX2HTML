@@ -37,63 +37,7 @@ $(document).ready(function() {
 								$result.append(msg.data);
 								break;
 							case "processMsgQueue":
-								var queue = msg.data;
-								for (var i=0; i<queue.length; i++) {
-									
-									queue[i].data.chartID;
-									queue[i].data.chartType;
-									var d = queue[i].data.chartData;
-									/*
-									var sin = [], cos = [];
-									
-									for (var j = 0; j < 100; j++) {
-										sin.push({x: j, y: Math.sin(j/10)});
-										cos.push({x: j, y: .5 * Math.cos(j/10)});
-									}
-									
-									var data =  [{
-										values: sin,
-										key: 'Sine Wave',
-										color: '#ff7f0e'
-									}, {
-										values: cos,
-										key: 'Cosine Wave',
-										color: '#2ca02c'
-									}];
-									*/
-									var data =  [];
-									for (var j=0; j<d.length; j++) {
-										var arr = [];
-										for (var k=0; k<d[j].length; k++) {
-											arr.push({x: k, y: d[j][k]});
-										}
-										data.push({
-											key: 'data' + (j + 1),
-											values: arr
-										});
-									}
-									
-									var chart = nv.models.lineChart()
-										.useInteractiveGuideline(true);
-									
-									chart.xAxis
-										.axisLabel('X')
-										.tickFormat(d3.format(',r'));
-									
-									chart.yAxis
-										.axisLabel('Y')
-										.tickFormat(d3.format('.02f'));
-									
-									//document.getElementById("#" + queue[i].data.chartID).innerHTML = "";
-									d3.select("#" + queue[i].data.chartID)
-										.append("svg")
-										.datum(data)
-										.transition().duration(500)
-										.call(chart);
-									
-									nv.utils.windowResize(chart.update);
-									
-								}
+								processMsgQueue(msg.data);
 								break;
 							case "pptx-thumb":
 								$("#pptx-thumb").attr("src", "data:image/jpeg;base64," + msg.data);
@@ -206,3 +150,78 @@ Reveal.initialize({\
 	}
 	
 });
+
+function processMsgQueue(queue) {
+	for (var i=0; i<queue.length; i++) {
+		processSingleMsg(queue[i].data);
+	}
+}
+
+function processSingleMsg(d) {
+	
+	var chartID = d.chartID;
+	var chartType = d.chartType;
+	var chartData = d.chartData;
+
+	var data =  [];
+	
+	var chart = null;
+	switch (chartType) {
+		case "lineChart":
+			for (var i=0; i<chartData.length; i++) {
+				var arr = [];
+				for (var j=0; j<chartData[i].length; j++) {
+					arr.push({x: j, y: chartData[i][j]});
+				}
+				data.push({key: 'data' + (i + 1), values: arr});
+			}
+			chart = nv.models.lineChart()
+						.useInteractiveGuideline(true);
+			chart.xAxis
+				.axisLabel('X')
+				.tickFormat(d3.format(',r'));
+			chart.yAxis
+				.axisLabel('Y')
+				.tickFormat(d3.format('.02f'));
+			break;
+		case "barChart":
+			for (var i=0; i<chartData.length; i++) {
+				var arr = [];
+				for (var j=0; j<chartData[i].length; j++) {
+					arr.push({x: j, y: chartData[i][j]});
+				}
+				data.push({key: 'data' + (i + 1), values: arr});
+			}
+			chart = nv.models.multiBarChart();
+			chart.xAxis
+				.axisLabel('X')
+				.tickFormat(d3.format(',r'));
+			chart.yAxis
+				.axisLabel('Y')
+				.tickFormat(d3.format('.02f'));
+			break;
+		case "pieChart":
+		case "pie3DChart":
+			for (var j=0; j<chartData[0].length; j++) {
+				data.push({label: "Item " + (j + 1), value: chartData[0][j]});
+			}
+			chart = nv.models.pieChart()
+						.x(function(d) { return d.label })
+						.y(function(d) { return d.value });
+			break;
+		default:
+	}
+	
+	if (chart !== null) {
+		
+		d3.select("#" + chartID)
+			.append("svg")
+			.datum(data)
+			.transition().duration(500)
+			.call(chart);
+		
+		nv.utils.windowResize(chart.update);
+		
+	}
+	
+}
