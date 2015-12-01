@@ -790,13 +790,15 @@ function processPicNode(node, warpObj) {
 function processGraphicFrameNode(node, warpObj) {
 	
 	var result = "";
+	
+	var order = node["attrs"]["order"];
 	var graphicTypeUri = getTextByPathList(node, ["a:graphic", "a:graphicData", "attrs", "uri"]);
 	
 	switch (graphicTypeUri) {
 		case "http://schemas.openxmlformats.org/drawingml/2006/table":
 			var tableNode = getTextByPathList(node, ["a:graphic", "a:graphicData", "a:tbl"]);
 			var xfrmNode = getTextByPathList(node, ["p:xfrm"]);
-			var tableHtml = "<table style='" + getPosition(xfrmNode, undefined, undefined) + getSize(xfrmNode, undefined, undefined) + "'>";
+			var tableHtml = "<table style='" + getPosition(xfrmNode, undefined, undefined) + getSize(xfrmNode, undefined, undefined) + " z-index: " + order + ";'>";
 			
 			var trNodes = tableNode["a:tr"];
 			if (trNodes.constructor === Array) {
@@ -843,34 +845,54 @@ function processGraphicFrameNode(node, warpObj) {
 			break;
 		case "http://schemas.openxmlformats.org/drawingml/2006/chart":
 			var xfrmNode = getTextByPathList(node, ["p:xfrm"]);
-			result = "<div id='chart" + chartID + "' class='block content' style='border: 1px dotted;" + getPosition(xfrmNode, undefined, undefined) + getSize(xfrmNode, undefined, undefined) + "'></div>";
+			result = "<div id='chart" + chartID + "' class='block content' style='border: 1px dotted;" + getPosition(xfrmNode, undefined, undefined) + getSize(xfrmNode, undefined, undefined) + " z-index: " + order + ";'></div>";
 			var rid = node["a:graphic"]["a:graphicData"]["c:chart"]["attrs"]["r:id"];
 			var refName = warpObj["slideResObj"][rid]["target"];
 			var content = readXmlFile(warpObj["zip"], refName);
 			var plotArea = getTextByPathList(content, ["c:chartSpace", "c:chart", "c:plotArea"]);
+			
+			var chartData = null;
 			for (var key in plotArea) {
 				switch (key) {
 					case "c:lineChart":
-						var dataMat = new Array();
-						/*result +=*/eachElement(plotArea["c:lineChart"]["c:ser"], function(innerNode) {
-							//var result = "";
-							var dataRow = new Array();
-							/*result +=*/eachElement(innerNode["c:val"]["c:numRef"]["c:numCache"]["c:pt"], function(innerNode) {
-								//var result = innerNode["c:v"] + "&nbsp;";
-								dataRow.push(parseFloat(innerNode["c:v"]));
-								return "";
-							});
-							dataMat.push(dataRow);
-							return "";
-						});
-						MsgQueue.push({
+						chartData = {
 							"type": "createChart",
 							"data": {
 								"chartID": "chart" + chartID,
 								"chartType": "lineChart",
-								"chartData": dataMat
+								"chartData": extractChartData(plotArea["c:lineChart"]["c:ser"])
 							}
-						});
+						};
+						break;
+					case "c:barChart":
+						chartData = {
+							"type": "createChart",
+							"data": {
+								"chartID": "chart" + chartID,
+								"chartType": "barChart",
+								"chartData": extractChartData(plotArea["c:barChart"]["c:ser"])
+							}
+						};
+						break;
+					case "c:pieChart":
+						chartData = {
+							"type": "createChart",
+							"data": {
+								"chartID": "chart" + chartID,
+								"chartType": "pieChart",
+								"chartData": extractChartData(plotArea["c:pieChart"]["c:ser"])
+							}
+						};
+						break;
+					case "c:pie3DChart":
+						chartData = {
+							"type": "createChart",
+							"data": {
+								"chartID": "chart" + chartID,
+								"chartType": "pie3DChart",
+								"chartData": extractChartData(plotArea["c:pie3DChart"]["c:ser"])
+							}
+						};
 						break;
 					case "c:catAx":
 						break;
@@ -879,6 +901,11 @@ function processGraphicFrameNode(node, warpObj) {
 					default:
 				}
 			}
+			
+			if (chartData !== null) {
+				MsgQueue.push(chartData);
+			}
+			
 			chartID++;
 			break;
 		case "http://schemas.openxmlformats.org/drawingml/2006/diagram":
@@ -1384,6 +1411,20 @@ function getSchemeColorFromTheme(schemeClr) {
 		color = getTextByPathList(refNode, ["a:sysClr", "attrs", "lastClr"]);
 	}
 	return color;
+}
+
+function extractChartData(serNode) {
+	var dataMat = new Array();
+	eachElement(serNode, function(innerNode) {
+		var dataRow = new Array();
+		eachElement(innerNode["c:val"]["c:numRef"]["c:numCache"]["c:pt"], function(innerNode) {
+			dataRow.push(parseFloat(innerNode["c:v"]));
+			return "";
+		});
+		dataMat.push(dataRow);
+		return "";
+	});
+	return dataMat;
 }
 
 // ===== Node functions =====
