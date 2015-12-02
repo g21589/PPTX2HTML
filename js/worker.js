@@ -1439,25 +1439,39 @@ function extractChartData(serNode) {
 	
 	if (serNode["c:xVal"] !== undefined) {
 		var dataRow = new Array();
-		eachElement(serNode["c:xVal"]["c:numRef"]["c:numCache"]["c:pt"], function(innerNode) {
+		eachElement(serNode["c:xVal"]["c:numRef"]["c:numCache"]["c:pt"], function(innerNode, index) {
 			dataRow.push(parseFloat(innerNode["c:v"]));
 			return "";
 		});
 		dataMat.push(dataRow);
 		dataRow = new Array();
-		eachElement(serNode["c:yVal"]["c:numRef"]["c:numCache"]["c:pt"], function(innerNode) {
+		eachElement(serNode["c:yVal"]["c:numRef"]["c:numCache"]["c:pt"], function(innerNode, index) {
 			dataRow.push(parseFloat(innerNode["c:v"]));
 			return "";
 		});
 		dataMat.push(dataRow);
 	} else {
-		eachElement(serNode, function(innerNode) {
+		eachElement(serNode, function(innerNode, index) {
 			var dataRow = new Array();
-			eachElement(innerNode["c:val"]["c:numRef"]["c:numCache"]["c:pt"], function(innerNode) {
-				dataRow.push(parseFloat(innerNode["c:v"]));
+			var colName = getTextByPathList(innerNode, ["c:tx", "c:strRef", "c:strCache", "c:pt", "c:v"]) || index;
+			
+			// Bug: Category string must be quantifed to display on chart
+			/*
+			var rowNames = {};
+			// category
+			eachElement(innerNode["c:cat"]["c:strRef"]["c:strCache"]["c:pt"], function(innerNode, index) {
+				rowNames[innerNode["attrs"]["idx"]] = innerNode["c:v"];
 				return "";
 			});
-			dataMat.push(dataRow);
+			*/
+			
+			// value
+			eachElement(innerNode["c:val"]["c:numRef"]["c:numCache"]["c:pt"], function(innerNode, index) {
+				//dataRow.push({x: rowNames[innerNode["attrs"]["idx"]], y: parseFloat(innerNode["c:v"])});
+				dataRow.push({x: innerNode["attrs"]["idx"], y: parseFloat(innerNode["c:v"])});
+				return "";
+			});
+			dataMat.push({key: colName, values: dataRow});
 			return "";
 		});
 	}
@@ -1514,10 +1528,10 @@ function eachElement(node, doFunction) {
 	if (node.constructor === Array) {
 		var l = node.length;
 		for (var i=0; i<l; i++) {
-			result += doFunction(node[i]);
+			result += doFunction(node[i], i);
 		}
 	} else {
-		result += doFunction(node);
+		result += doFunction(node, 0);
 	}
 	return result;
 }

@@ -168,6 +168,7 @@ function processSingleMsg(d) {
 	var chart = null;
 	switch (chartType) {
 		case "lineChart":
+			/*
 			for (var i=0; i<chartData.length; i++) {
 				var arr = [];
 				for (var j=0; j<chartData[i].length; j++) {
@@ -175,12 +176,15 @@ function processSingleMsg(d) {
 				}
 				data.push({key: 'data' + (i + 1), values: arr});
 			}
+			*/
+			data = chartData;
 			chart = nv.models.lineChart()
 						.useInteractiveGuideline(true);
-			chart.xAxis.axisLabel('X').tickFormat(d3.format(',r'));
-			chart.yAxis.axisLabel('Y').tickFormat(d3.format('.02f'));
+			//chart.xAxis.axisLabel('X').tickFormat(d3.format(',r'));
+			//chart.yAxis.axisLabel('Y').tickFormat(d3.format('.02f'));
 			break;
 		case "barChart":
+			/*
 			for (var i=0; i<chartData.length; i++) {
 				var arr = [];
 				for (var j=0; j<chartData[i].length; j++) {
@@ -188,20 +192,21 @@ function processSingleMsg(d) {
 				}
 				data.push({key: 'data' + (i + 1), values: arr});
 			}
+			*/
+			data = chartData;
 			chart = nv.models.multiBarChart();
-			chart.xAxis.axisLabel('X').tickFormat(d3.format(',r'));
-			chart.yAxis.axisLabel('Y').tickFormat(d3.format('.02f'));
+			//chart.xAxis.axisLabel('X').tickFormat(d3.format(',r'));
+			//chart.yAxis.axisLabel('Y').tickFormat(d3.format('.02f'));
 			break;
 		case "pieChart":
 		case "pie3DChart":
-			for (var j=0; j<chartData[0].length; j++) {
-				data.push({label: "Item " + (j + 1), value: chartData[0][j]});
-			}
-			chart = nv.models.pieChart()
-						.x(function(d) { return d.label })
-						.y(function(d) { return d.value });
+			data = chartData[0].values;
+			chart = nv.models.pieChart();
+						//.x(function(d) { return d.x })
+						//.y(function(d) { return d.y });
 			break;
 		case "areaChart":
+			/*
 			for (var i=0; i<chartData.length; i++) {
 				var arr = [];
 				for (var j=0; j<chartData[i].length; j++) {
@@ -209,13 +214,16 @@ function processSingleMsg(d) {
 				}
 				data.push({key: 'data' + (i + 1), values: arr});
 			}
+			*/
+			data = chartData;
 			chart = nv.models.stackedAreaChart()
 						.clipEdge(true)
 						.useInteractiveGuideline(true);
-			chart.xAxis.axisLabel('X').tickFormat(d3.format(',r'));
-			chart.yAxis.axisLabel('Y').tickFormat(d3.format('.02f'));
+			//chart.xAxis.axisLabel('X').tickFormat(d3.format(',r'));
+			//chart.yAxis.axisLabel('Y').tickFormat(d3.format('.02f'));
 			break;
 		case "scatterChart":
+			
 			for (var i=0; i<chartData.length; i++) {
 				var arr = [];
 				for (var j=0; j<chartData[i].length; j++) {
@@ -223,6 +231,8 @@ function processSingleMsg(d) {
 				}
 				data.push({key: 'data' + (i + 1), values: arr});
 			}
+			
+			//data = chartData;
 			chart = nv.models.scatterChart()
 						.showDistX(true)
 						.showDistY(true)
