@@ -136,7 +136,7 @@ Reveal.initialize({\
 		
 		$("#to-reveal-btn").click(function () {
 			if (localStorage) {
-				localStorage.setItem("slides", $result.html());
+				localStorage.setItem("slides", LZString.compressToUTF16($result.html()));
 				window.open("./reveal/demo.html", "_blank");
 			} else {
 				alert("Browser don't support Web Storage!");
@@ -216,6 +216,13 @@ function processSingleMsg(d) {
 			chart.yAxis.axisLabel('Y').tickFormat(d3.format('.02f'));
 			break;
 		case "scatterChart":
+			for (var i=0; i<chartData.length; i++) {
+				var arr = [];
+				for (var j=0; j<chartData[i].length; j++) {
+					arr.push({x: j, y: chartData[i][j]});
+				}
+				data.push({key: 'data' + (i + 1), values: arr});
+			}
 			chart = nv.models.scatterChart()
 						.showDistX(true)
 						.showDistY(true)

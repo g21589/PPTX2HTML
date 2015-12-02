@@ -845,7 +845,7 @@ function processGraphicFrameNode(node, warpObj) {
 			break;
 		case "http://schemas.openxmlformats.org/drawingml/2006/chart":
 			var xfrmNode = getTextByPathList(node, ["p:xfrm"]);
-			result = "<div id='chart" + chartID + "' class='block content' style='border: 1px dotted;" + getPosition(xfrmNode, undefined, undefined) + getSize(xfrmNode, undefined, undefined) + " z-index: " + order + ";'></div>";
+			result = "<div id='chart" + chartID + "' class='block content' style='" + getPosition(xfrmNode, undefined, undefined) + getSize(xfrmNode, undefined, undefined) + " z-index: " + order + ";'></div>";
 			var rid = node["a:graphic"]["a:graphicData"]["c:chart"]["attrs"]["r:id"];
 			var refName = warpObj["slideResObj"][rid]["target"];
 			var content = readXmlFile(warpObj["zip"], refName);
@@ -1437,11 +1437,19 @@ function extractChartData(serNode) {
 	
 	var dataMat = new Array();
 	
-	if (serNode["c:val"] === undefined) {
+	if (serNode["c:xVal"] !== undefined) {
+		var dataRow = new Array();
 		eachElement(serNode["c:xVal"]["c:numRef"]["c:numCache"]["c:pt"], function(innerNode) {
+			dataRow.push(parseFloat(innerNode["c:v"]));
 			return "";
 		});
-		serNode["c:yVal"]
+		dataMat.push(dataRow);
+		dataRow = new Array();
+		eachElement(serNode["c:yVal"]["c:numRef"]["c:numCache"]["c:pt"], function(innerNode) {
+			dataRow.push(parseFloat(innerNode["c:v"]));
+			return "";
+		});
+		dataMat.push(dataRow);
 	} else {
 		eachElement(serNode, function(innerNode) {
 			var dataRow = new Array();
