@@ -177,12 +177,8 @@ function processSingleMsg(d) {
 			}
 			chart = nv.models.lineChart()
 						.useInteractiveGuideline(true);
-			chart.xAxis
-				.axisLabel('X')
-				.tickFormat(d3.format(',r'));
-			chart.yAxis
-				.axisLabel('Y')
-				.tickFormat(d3.format('.02f'));
+			chart.xAxis.axisLabel('X').tickFormat(d3.format(',r'));
+			chart.yAxis.axisLabel('Y').tickFormat(d3.format('.02f'));
 			break;
 		case "barChart":
 			for (var i=0; i<chartData.length; i++) {
@@ -193,12 +189,8 @@ function processSingleMsg(d) {
 				data.push({key: 'data' + (i + 1), values: arr});
 			}
 			chart = nv.models.multiBarChart();
-			chart.xAxis
-				.axisLabel('X')
-				.tickFormat(d3.format(',r'));
-			chart.yAxis
-				.axisLabel('Y')
-				.tickFormat(d3.format('.02f'));
+			chart.xAxis.axisLabel('X').tickFormat(d3.format(',r'));
+			chart.yAxis.axisLabel('Y').tickFormat(d3.format('.02f'));
 			break;
 		case "pieChart":
 		case "pie3DChart":
@@ -208,6 +200,28 @@ function processSingleMsg(d) {
 			chart = nv.models.pieChart()
 						.x(function(d) { return d.label })
 						.y(function(d) { return d.value });
+			break;
+		case "areaChart":
+			for (var i=0; i<chartData.length; i++) {
+				var arr = [];
+				for (var j=0; j<chartData[i].length; j++) {
+					arr.push({x: j, y: chartData[i][j]});
+				}
+				data.push({key: 'data' + (i + 1), values: arr});
+			}
+			chart = nv.models.stackedAreaChart()
+						.clipEdge(true)
+						.useInteractiveGuideline(true);
+			chart.xAxis.axisLabel('X').tickFormat(d3.format(',r'));
+			chart.yAxis.axisLabel('Y').tickFormat(d3.format('.02f'));
+			break;
+		case "scatterChart":
+			chart = nv.models.scatterChart()
+						.showDistX(true)
+						.showDistY(true)
+						.color(d3.scale.category10().range());
+			chart.xAxis.axisLabel('X').tickFormat(d3.format('.02f'));
+			chart.yAxis.axisLabel('Y').tickFormat(d3.format('.02f'));
 			break;
 		default:
 	}

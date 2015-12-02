@@ -860,7 +860,7 @@ function processGraphicFrameNode(node, warpObj) {
 							"data": {
 								"chartID": "chart" + chartID,
 								"chartType": "lineChart",
-								"chartData": extractChartData(plotArea["c:lineChart"]["c:ser"])
+								"chartData": extractChartData(plotArea[key]["c:ser"])
 							}
 						};
 						break;
@@ -870,7 +870,7 @@ function processGraphicFrameNode(node, warpObj) {
 							"data": {
 								"chartID": "chart" + chartID,
 								"chartType": "barChart",
-								"chartData": extractChartData(plotArea["c:barChart"]["c:ser"])
+								"chartData": extractChartData(plotArea[key]["c:ser"])
 							}
 						};
 						break;
@@ -880,7 +880,7 @@ function processGraphicFrameNode(node, warpObj) {
 							"data": {
 								"chartID": "chart" + chartID,
 								"chartType": "pieChart",
-								"chartData": extractChartData(plotArea["c:pieChart"]["c:ser"])
+								"chartData": extractChartData(plotArea[key]["c:ser"])
 							}
 						};
 						break;
@@ -890,7 +890,27 @@ function processGraphicFrameNode(node, warpObj) {
 							"data": {
 								"chartID": "chart" + chartID,
 								"chartType": "pie3DChart",
-								"chartData": extractChartData(plotArea["c:pie3DChart"]["c:ser"])
+								"chartData": extractChartData(plotArea[key]["c:ser"])
+							}
+						};
+						break;
+					case "c:areaChart":
+						chartData = {
+							"type": "createChart",
+							"data": {
+								"chartID": "chart" + chartID,
+								"chartType": "areaChart",
+								"chartData": extractChartData(plotArea[key]["c:ser"])
+							}
+						};
+						break;
+					case "c:scatterChart":
+						chartData = {
+							"type": "createChart",
+							"data": {
+								"chartID": "chart" + chartID,
+								"chartType": "scatterChart",
+								"chartData": extractChartData(plotArea[key]["c:ser"])
 							}
 						};
 						break;
@@ -1414,16 +1434,26 @@ function getSchemeColorFromTheme(schemeClr) {
 }
 
 function extractChartData(serNode) {
+	
 	var dataMat = new Array();
-	eachElement(serNode, function(innerNode) {
-		var dataRow = new Array();
-		eachElement(innerNode["c:val"]["c:numRef"]["c:numCache"]["c:pt"], function(innerNode) {
-			dataRow.push(parseFloat(innerNode["c:v"]));
+	
+	if (serNode["c:val"] === undefined) {
+		eachElement(serNode["c:xVal"]["c:numRef"]["c:numCache"]["c:pt"], function(innerNode) {
 			return "";
 		});
-		dataMat.push(dataRow);
-		return "";
-	});
+		serNode["c:yVal"]
+	} else {
+		eachElement(serNode, function(innerNode) {
+			var dataRow = new Array();
+			eachElement(innerNode["c:val"]["c:numRef"]["c:numCache"]["c:pt"], function(innerNode) {
+				dataRow.push(parseFloat(innerNode["c:v"]));
+				return "";
+			});
+			dataMat.push(dataRow);
+			return "";
+		});
+	}
+	
 	return dataMat;
 }
 
