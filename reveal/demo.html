@@ -133,7 +133,7 @@ section img {
 	all: initial;
 }
 </style>
-
+<script type="text/javascript" src="./js/lz-string.min.js"></script>
 </head>
 
 <body>
@@ -151,7 +151,7 @@ section img {
 
 <script>
 if (localStorage) {
-	document.getElementById("target").innerHTML = localStorage.getItem("slides");
+	document.getElementById("target").innerHTML = LZString.decompressFromUTF16(localStorage.getItem("slides"));
 } else {
 	alert("Browser don't support Web Storage!");
 }

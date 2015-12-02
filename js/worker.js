@@ -845,7 +845,7 @@ function processGraphicFrameNode(node, warpObj) {
 			break;
 		case "http://schemas.openxmlformats.org/drawingml/2006/chart":
 			var xfrmNode = getTextByPathList(node, ["p:xfrm"]);
-			result = "<div id='chart" + chartID + "' class='block content' style='border: 1px dotted;" + getPosition(xfrmNode, undefined, undefined) + getSize(xfrmNode, undefined, undefined) + " z-index: " + order + ";'></div>";
+			result = "<div id='chart" + chartID + "' class='block content' style='" + getPosition(xfrmNode, undefined, undefined) + getSize(xfrmNode, undefined, undefined) + " z-index: " + order + ";'></div>";
 			var rid = node["a:graphic"]["a:graphicData"]["c:chart"]["attrs"]["r:id"];
 			var refName = warpObj["slideResObj"][rid]["target"];
 			var content = readXmlFile(warpObj["zip"], refName);
@@ -860,7 +860,7 @@ function processGraphicFrameNode(node, warpObj) {
 							"data": {
 								"chartID": "chart" + chartID,
 								"chartType": "lineChart",
-								"chartData": extractChartData(plotArea["c:lineChart"]["c:ser"])
+								"chartData": extractChartData(plotArea[key]["c:ser"])
 							}
 						};
 						break;
@@ -870,7 +870,7 @@ function processGraphicFrameNode(node, warpObj) {
 							"data": {
 								"chartID": "chart" + chartID,
 								"chartType": "barChart",
-								"chartData": extractChartData(plotArea["c:barChart"]["c:ser"])
+								"chartData": extractChartData(plotArea[key]["c:ser"])
 							}
 						};
 						break;
@@ -880,7 +880,7 @@ function processGraphicFrameNode(node, warpObj) {
 							"data": {
 								"chartID": "chart" + chartID,
 								"chartType": "pieChart",
-								"chartData": extractChartData(plotArea["c:pieChart"]["c:ser"])
+								"chartData": extractChartData(plotArea[key]["c:ser"])
 							}
 						};
 						break;
@@ -890,7 +890,27 @@ function processGraphicFrameNode(node, warpObj) {
 							"data": {
 								"chartID": "chart" + chartID,
 								"chartType": "pie3DChart",
-								"chartData": extractChartData(plotArea["c:pie3DChart"]["c:ser"])
+								"chartData": extractChartData(plotArea[key]["c:ser"])
+							}
+						};
+						break;
+					case "c:areaChart":
+						chartData = {
+							"type": "createChart",
+							"data": {
+								"chartID": "chart" + chartID,
+								"chartType": "areaChart",
+								"chartData": extractChartData(plotArea[key]["c:ser"])
+							}
+						};
+						break;
+					case "c:scatterChart":
+						chartData = {
+							"type": "createChart",
+							"data": {
+								"chartID": "chart" + chartID,
+								"chartType": "scatterChart",
+								"chartData": extractChartData(plotArea[key]["c:ser"])
 							}
 						};
 						break;
@@ -1414,16 +1434,48 @@ function getSchemeColorFromTheme(schemeClr) {
 }
 
 function extractChartData(serNode) {
+	
 	var dataMat = new Array();
-	eachElement(serNode, function(innerNode) {
+	
+	if (serNode["c:xVal"] !== undefined) {
 		var dataRow = new Array();
-		eachElement(innerNode["c:val"]["c:numRef"]["c:numCache"]["c:pt"], function(innerNode) {
+		eachElement(serNode["c:xVal"]["c:numRef"]["c:numCache"]["c:pt"], function(innerNode, index) {
 			dataRow.push(parseFloat(innerNode["c:v"]));
 			return "";
 		});
 		dataMat.push(dataRow);
-		return "";
-	});
+		dataRow = new Array();
+		eachElement(serNode["c:yVal"]["c:numRef"]["c:numCache"]["c:pt"], function(innerNode, index) {
+			dataRow.push(parseFloat(innerNode["c:v"]));
+			return "";
+		});
+		dataMat.push(dataRow);
+	} else {
+		eachElement(serNode, function(innerNode, index) {
+			var dataRow = new Array();
+			var colName = getTextByPathList(innerNode, ["c:tx", "c:strRef", "c:strCache", "c:pt", "c:v"]) || index;
+			
+			// Bug: Category string must be quantifed to display on chart
+			/*
+			var rowNames = {};
+			// category
+			eachElement(innerNode["c:cat"]["c:strRef"]["c:strCache"]["c:pt"], function(innerNode, index) {
+				rowNames[innerNode["attrs"]["idx"]] = innerNode["c:v"];
+				return "";
+			});
+			*/
+			
+			// value
+			eachElement(innerNode["c:val"]["c:numRef"]["c:numCache"]["c:pt"], function(innerNode, index) {
+				//dataRow.push({x: rowNames[innerNode["attrs"]["idx"]], y: parseFloat(innerNode["c:v"])});
+				dataRow.push({x: innerNode["attrs"]["idx"], y: parseFloat(innerNode["c:v"])});
+				return "";
+			});
+			dataMat.push({key: colName, values: dataRow});
+			return "";
+		});
+	}
+	
 	return dataMat;
 }
 
@@ -1476,10 +1528,10 @@ function eachElement(node, doFunction) {
 	if (node.constructor === Array) {
 		var l = node.length;
 		for (var i=0; i<l; i++) {
-			result += doFunction(node[i]);
+			result += doFunction(node[i], i);
 		}
 	} else {
-		result += doFunction(node);
+		result += doFunction(node, 0);
 	}
 	return result;
 }
