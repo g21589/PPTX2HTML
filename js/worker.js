@@ -432,8 +432,6 @@ function genShape(node, slideLayoutSpNode, slideMasterSpNode, id, name, idx, typ
 		isFlipV = true;
 	}
 	
-	// TODO: 圖形統一用SVG渲染
-	// 優先權: p:spPr(a:solidFill, a:ln, ...), p:style(a:fillRef, a:lnRef, ...)
 	if (shapType !== undefined) {
 		
 		var off = getTextByPathList(slideXfrmNode, ["a:off", "attrs"]);
@@ -773,11 +771,14 @@ function processPicNode(node, warpObj) {
 		case "png":
 			mimeType = "image/png";
 			break;
+		case "gif":
+			mimeType = "image/gif";
+			break;
 		case "emf": // Not native support
-			mimeType = "image/emf";
+			mimeType = "image/x-emf";
 			break;
 		case "wmf": // Not native support
-			mimeType = "image/wmf";
+			mimeType = "image/x-wmf";
 			break;
 		default:
 			mimeType = "image/*";
@@ -790,147 +791,17 @@ function processPicNode(node, warpObj) {
 function processGraphicFrameNode(node, warpObj) {
 	
 	var result = "";
-	
-	var order = node["attrs"]["order"];
 	var graphicTypeUri = getTextByPathList(node, ["a:graphic", "a:graphicData", "attrs", "uri"]);
 	
 	switch (graphicTypeUri) {
 		case "http://schemas.openxmlformats.org/drawingml/2006/table":
-			var tableNode = getTextByPathList(node, ["a:graphic", "a:graphicData", "a:tbl"]);
-			var xfrmNode = getTextByPathList(node, ["p:xfrm"]);
-			var tableHtml = "<table style='" + getPosition(xfrmNode, undefined, undefined) + getSize(xfrmNode, undefined, undefined) + " z-index: " + order + ";'>";
-			
-			var trNodes = tableNode["a:tr"];
-			if (trNodes.constructor === Array) {
-				for (var i=0; i<trNodes.length; i++) {
-					tableHtml += "<tr>";
-					var tcNodes = trNodes[i]["a:tc"];
-					
-					if (tcNodes.constructor === Array) {
-						for (var j=0; j<tcNodes.length; j++) {
-							var text = genTextBody(tcNodes[j]["a:txBody"]);							
-							var rowSpan = getTextByPathList(tcNodes[j], ["attrs", "rowSpan"]);
-							var colSpan = getTextByPathList(tcNodes[j], ["attrs", "gridSpan"]);
-							var vMerge = getTextByPathList(tcNodes[j], ["attrs", "vMerge"]);
-							var hMerge = getTextByPathList(tcNodes[j], ["attrs", "hMerge"]);
-							if (rowSpan !== undefined) {
-								tableHtml += "<td rowspan='" + parseInt(rowSpan) + "'>" + text + "</td>";
-							} else if (colSpan !== undefined) {
-								tableHtml += "<td colspan='" + parseInt(colSpan) + "'>" + text + "</td>";
-							} else if (vMerge === undefined && hMerge === undefined) {
-								tableHtml += "<td>" + text + "</td>";
-							}
-						}
-					} else {
-						var text = genTextBody(tcNodes["a:txBody"]);
-						tableHtml += "<td>" + text + "</td>";
-					}
-					tableHtml += "</tr>";
-				}
-			} else {
-				tableHtml += "<tr>";
-				var tcNodes = trNodes["a:tc"];
-				if (tcNodes.constructor === Array) {
-					for (var j=0; j<tcNodes.length; j++) {
-						var text = genTextBody(tcNodes[j]["a:txBody"]);
-						tableHtml += "<td>" + text + "</td>";
-					}
-				} else {
-					var text = genTextBody(tcNodes["a:txBody"]);
-					tableHtml += "<td>" + text + "</td>";
-				}
-				tableHtml += "</tr>";
-			}
-			result = tableHtml;
+			result = genTable(node, warpObj);
 			break;
 		case "http://schemas.openxmlformats.org/drawingml/2006/chart":
-			var xfrmNode = getTextByPathList(node, ["p:xfrm"]);
-			result = "<div id='chart" + chartID + "' class='block content' style='" + getPosition(xfrmNode, undefined, undefined) + getSize(xfrmNode, undefined, undefined) + " z-index: " + order + ";'></div>";
-			var rid = node["a:graphic"]["a:graphicData"]["c:chart"]["attrs"]["r:id"];
-			var refName = warpObj["slideResObj"][rid]["target"];
-			var content = readXmlFile(warpObj["zip"], refName);
-			var plotArea = getTextByPathList(content, ["c:chartSpace", "c:chart", "c:plotArea"]);
-			
-			var chartData = null;
-			for (var key in plotArea) {
-				switch (key) {
-					case "c:lineChart":
-						chartData = {
-							"type": "createChart",
-							"data": {
-								"chartID": "chart" + chartID,
-								"chartType": "lineChart",
-								"chartData": extractChartData(plotArea[key]["c:ser"])
-							}
-						};
-						break;
-					case "c:barChart":
-						chartData = {
-							"type": "createChart",
-							"data": {
-								"chartID": "chart" + chartID,
-								"chartType": "barChart",
-								"chartData": extractChartData(plotArea[key]["c:ser"])
-							}
-						};
-						break;
-					case "c:pieChart":
-						chartData = {
-							"type": "createChart",
-							"data": {
-								"chartID": "chart" + chartID,
-								"chartType": "pieChart",
-								"chartData": extractChartData(plotArea[key]["c:ser"])
-							}
-						};
-						break;
-					case "c:pie3DChart":
-						chartData = {
-							"type": "createChart",
-							"data": {
-								"chartID": "chart" + chartID,
-								"chartType": "pie3DChart",
-								"chartData": extractChartData(plotArea[key]["c:ser"])
-							}
-						};
-						break;
-					case "c:areaChart":
-						chartData = {
-							"type": "createChart",
-							"data": {
-								"chartID": "chart" + chartID,
-								"chartType": "areaChart",
-								"chartData": extractChartData(plotArea[key]["c:ser"])
-							}
-						};
-						break;
-					case "c:scatterChart":
-						chartData = {
-							"type": "createChart",
-							"data": {
-								"chartID": "chart" + chartID,
-								"chartType": "scatterChart",
-								"chartData": extractChartData(plotArea[key]["c:ser"])
-							}
-						};
-						break;
-					case "c:catAx":
-						break;
-					case "c:valAx":
-						break;
-					default:
-				}
-			}
-			
-			if (chartData !== null) {
-				MsgQueue.push(chartData);
-			}
-			
-			chartID++;
+			result = genChart(node, warpObj);
 			break;
 		case "http://schemas.openxmlformats.org/drawingml/2006/diagram":
-			var xfrmNode = getTextByPathList(node, ["p:xfrm"]);
-			result = "<div class='block content' style='border: 1px dotted;" + getPosition(xfrmNode, undefined, undefined) + getSize(xfrmNode, undefined, undefined) + "'>TODO: diagram</div>";
+			result = genDiagram(node, warpObj);
 			break;
 		default:
 	}
@@ -1069,6 +940,158 @@ function genSpanElement(node, slideLayoutSpNode, slideMasterSpNode, type, slideM
 				"; text-decoration: " + getFontDecoration(node, type, slideMasterTextStyles) +
 				"; vertical-align: " + getTextVerticalAlign(node, type, slideMasterTextStyles) + 
 				";'>" + text.replace(/\s/i, "&nbsp;") + "</span>";
+}
+
+function genTable(node, warpObj) {
+	
+	var order = node["attrs"]["order"];
+	var tableNode = getTextByPathList(node, ["a:graphic", "a:graphicData", "a:tbl"]);
+	var xfrmNode = getTextByPathList(node, ["p:xfrm"]);
+	var tableHtml = "<table style='" + getPosition(xfrmNode, undefined, undefined) + getSize(xfrmNode, undefined, undefined) + " z-index: " + order + ";'>";
+	
+	var trNodes = tableNode["a:tr"];
+	if (trNodes.constructor === Array) {
+		for (var i=0; i<trNodes.length; i++) {
+			tableHtml += "<tr>";
+			var tcNodes = trNodes[i]["a:tc"];
+			
+			if (tcNodes.constructor === Array) {
+				for (var j=0; j<tcNodes.length; j++) {
+					var text = genTextBody(tcNodes[j]["a:txBody"]);							
+					var rowSpan = getTextByPathList(tcNodes[j], ["attrs", "rowSpan"]);
+					var colSpan = getTextByPathList(tcNodes[j], ["attrs", "gridSpan"]);
+					var vMerge = getTextByPathList(tcNodes[j], ["attrs", "vMerge"]);
+					var hMerge = getTextByPathList(tcNodes[j], ["attrs", "hMerge"]);
+					if (rowSpan !== undefined) {
+						tableHtml += "<td rowspan='" + parseInt(rowSpan) + "'>" + text + "</td>";
+					} else if (colSpan !== undefined) {
+						tableHtml += "<td colspan='" + parseInt(colSpan) + "'>" + text + "</td>";
+					} else if (vMerge === undefined && hMerge === undefined) {
+						tableHtml += "<td>" + text + "</td>";
+					}
+				}
+			} else {
+				var text = genTextBody(tcNodes["a:txBody"]);
+				tableHtml += "<td>" + text + "</td>";
+			}
+			tableHtml += "</tr>";
+		}
+	} else {
+		tableHtml += "<tr>";
+		var tcNodes = trNodes["a:tc"];
+		if (tcNodes.constructor === Array) {
+			for (var j=0; j<tcNodes.length; j++) {
+				var text = genTextBody(tcNodes[j]["a:txBody"]);
+				tableHtml += "<td>" + text + "</td>";
+			}
+		} else {
+			var text = genTextBody(tcNodes["a:txBody"]);
+			tableHtml += "<td>" + text + "</td>";
+		}
+		tableHtml += "</tr>";
+	}
+	
+	return tableHtml;
+}
+
+function genChart(node, warpObj) {
+	
+	var order = node["attrs"]["order"];
+	var xfrmNode = getTextByPathList(node, ["p:xfrm"]);
+	var result = "<div id='chart" + chartID + "' class='block content' style='" + 
+					getPosition(xfrmNode, undefined, undefined) + getSize(xfrmNode, undefined, undefined) + 
+					" z-index: " + order + ";'></div>";
+	
+	var rid = node["a:graphic"]["a:graphicData"]["c:chart"]["attrs"]["r:id"];
+	var refName = warpObj["slideResObj"][rid]["target"];
+	var content = readXmlFile(warpObj["zip"], refName);
+	var plotArea = getTextByPathList(content, ["c:chartSpace", "c:chart", "c:plotArea"]);
+	
+	var chartData = null;
+	for (var key in plotArea) {
+		switch (key) {
+			case "c:lineChart":
+				chartData = {
+					"type": "createChart",
+					"data": {
+						"chartID": "chart" + chartID,
+						"chartType": "lineChart",
+						"chartData": extractChartData(plotArea[key]["c:ser"])
+					}
+				};
+				break;
+			case "c:barChart":
+				chartData = {
+					"type": "createChart",
+					"data": {
+						"chartID": "chart" + chartID,
+						"chartType": "barChart",
+						"chartData": extractChartData(plotArea[key]["c:ser"])
+					}
+				};
+				break;
+			case "c:pieChart":
+				chartData = {
+					"type": "createChart",
+					"data": {
+						"chartID": "chart" + chartID,
+						"chartType": "pieChart",
+						"chartData": extractChartData(plotArea[key]["c:ser"])
+					}
+				};
+				break;
+			case "c:pie3DChart":
+				chartData = {
+					"type": "createChart",
+					"data": {
+						"chartID": "chart" + chartID,
+						"chartType": "pie3DChart",
+						"chartData": extractChartData(plotArea[key]["c:ser"])
+					}
+				};
+				break;
+			case "c:areaChart":
+				chartData = {
+					"type": "createChart",
+					"data": {
+						"chartID": "chart" + chartID,
+						"chartType": "areaChart",
+						"chartData": extractChartData(plotArea[key]["c:ser"])
+					}
+				};
+				break;
+			case "c:scatterChart":
+				chartData = {
+					"type": "createChart",
+					"data": {
+						"chartID": "chart" + chartID,
+						"chartType": "scatterChart",
+						"chartData": extractChartData(plotArea[key]["c:ser"])
+					}
+				};
+				break;
+			case "c:catAx":
+				break;
+			case "c:valAx":
+				break;
+			default:
+		}
+	}
+	
+	if (chartData !== null) {
+		MsgQueue.push(chartData);
+	}
+	
+	chartID++;
+	return result;
+}
+
+function genDiagram(node, warpObj) {
+	var order = node["attrs"]["order"];
+	var xfrmNode = getTextByPathList(node, ["p:xfrm"]);
+	return "<div class='block content' style='border: 1px dotted;" + 
+				getPosition(xfrmNode, undefined, undefined) + getSize(xfrmNode, undefined, undefined) + 
+			"'>TODO: diagram</div>";
 }
 
 function getPosition(slideSpNode, slideLayoutSpNode, slideMasterSpNode) {
@@ -1454,24 +1477,23 @@ function extractChartData(serNode) {
 		eachElement(serNode, function(innerNode, index) {
 			var dataRow = new Array();
 			var colName = getTextByPathList(innerNode, ["c:tx", "c:strRef", "c:strCache", "c:pt", "c:v"]) || index;
-			
-			// Bug: Category string must be quantifed to display on chart
-			/*
+
+			// Category
 			var rowNames = {};
-			// category
-			eachElement(innerNode["c:cat"]["c:strRef"]["c:strCache"]["c:pt"], function(innerNode, index) {
-				rowNames[innerNode["attrs"]["idx"]] = innerNode["c:v"];
-				return "";
-			});
-			*/
+			if (getTextByPathList(innerNode, ["c:cat", "c:strRef", "c:strCache", "c:pt"]) !== undefined) {
+				eachElement(innerNode["c:cat"]["c:strRef"]["c:strCache"]["c:pt"], function(innerNode, index) {
+					rowNames[innerNode["attrs"]["idx"]] = innerNode["c:v"];
+					return "";
+				});
+			}
 			
-			// value
+			// Value
 			eachElement(innerNode["c:val"]["c:numRef"]["c:numCache"]["c:pt"], function(innerNode, index) {
-				//dataRow.push({x: rowNames[innerNode["attrs"]["idx"]], y: parseFloat(innerNode["c:v"])});
 				dataRow.push({x: innerNode["attrs"]["idx"], y: parseFloat(innerNode["c:v"])});
 				return "";
 			});
-			dataMat.push({key: colName, values: dataRow});
+			
+			dataMat.push({key: colName, values: dataRow, xlabels: rowNames});
 			return "";
 		});
 	}
