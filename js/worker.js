@@ -1473,7 +1473,7 @@ function extractChartData(serNode) {
 			return "";
 		});
 		dataMat.push(dataRow);
-	} else {
+	} else if (serNode["c:val"] !== undefined) {
 		eachElement(serNode, function(innerNode, index) {
 			var dataRow = new Array();
 			var colName = getTextByPathList(innerNode, ["c:tx", "c:strRef", "c:strCache", "c:pt", "c:v"]) || index;
@@ -1496,6 +1496,8 @@ function extractChartData(serNode) {
 			dataMat.push({key: colName, values: dataRow, xlabels: rowNames});
 			return "";
 		});
+	} else {
+		
 	}
 	
 	return dataMat;
