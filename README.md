@@ -14,25 +14,34 @@ Version
 Support Objects
 ----
 * Text
-  *  Font size
-  *  Font family
-  *  Font style: blod, italic
-  *  Color
-  *  Location
+  * Font size
+  * Font family
+  * Font style: blod, italic, underline
+  * Color
+  * Location
 * Picture
   * Type: jpg/jpeg, png, gif
-  * location
+  * Location
 * Graph
   * Bar chart
   * Line chart
   * Pie chart
+  * Scatter chart
 * Table
   * Location
   * Size
-* Drawing
-  * Simple block
-* Group
+* Text block (convert to Div)
+  * Align (Horizontal and Vertical)
+  * Background color (single color)
+  * Border (borderColor, borderWidth, borderType, strokeDasharray)
+* Drawing (convert to SVG)
+  * Simple block (rect, ellipse, roundRect)
+  * Background color (single color)
+  * Align (Horizontal and Vertical)
+  * Border (borderColor, borderWidth, borderType, strokeDasharray)
+* Group/Multi-level Group
   * Level (z-index)
+* Theme/Layout
 
 
 License
