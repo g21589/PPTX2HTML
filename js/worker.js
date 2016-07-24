@@ -19,6 +19,8 @@ var titleFontSize = 42;
 var bodyFontSize = 20;
 var otherFontSize = 16;
 
+var styleTable = {};
+
 onmessage = function(e) {
 	
 	switch (e.data.type) {
@@ -67,6 +69,11 @@ function processPPTX(data) {
 			"data": (i + 1) * 100 / numOfSlides
 		});
 	}
+	
+	self.postMessage({
+		"type": "globalCSS",
+		"data": genGlobalCSS()
+	});
 	
 	var dateAfter = new Date();
 	self.postMessage({
@@ -932,14 +939,37 @@ function genSpanElement(node, slideLayoutSpNode, slideMasterSpNode, type, slideM
 		}
 	}
 	
-	return "<span class='text-block' style='color: " + getFontColor(node, type, slideMasterTextStyles) + 
-				"; font-size: " + getFontSize(node, slideLayoutSpNode, slideMasterSpNode, type, slideMasterTextStyles) + 
-				"; font-family: " + getFontType(node, type, slideMasterTextStyles) + 
-				"; font-weight: " + getFontBold(node, type, slideMasterTextStyles) + 
-				"; font-style: " + getFontItalic(node, type, slideMasterTextStyles) + 
-				"; text-decoration: " + getFontDecoration(node, type, slideMasterTextStyles) +
-				"; vertical-align: " + getTextVerticalAlign(node, type, slideMasterTextStyles) + 
-				";'>" + text.replace(/\s/i, "&nbsp;") + "</span>";
+	var styleText = 
+		"color:" + getFontColor(node, type, slideMasterTextStyles) + 
+		";font-size:" + getFontSize(node, slideLayoutSpNode, slideMasterSpNode, type, slideMasterTextStyles) + 
+		";font-family:" + getFontType(node, type, slideMasterTextStyles) + 
+		";font-weight:" + getFontBold(node, type, slideMasterTextStyles) + 
+		";font-style:" + getFontItalic(node, type, slideMasterTextStyles) + 
+		";text-decoration:" + getFontDecoration(node, type, slideMasterTextStyles) +
+		";vertical-align:" + getTextVerticalAlign(node, type, slideMasterTextStyles) + 
+		";";
+	
+	var cssName = "";
+	
+	if (styleText in styleTable) {
+		cssName = styleTable[styleText]["name"];
+	} else {
+		cssName = "_css_" + (Object.keys(styleTable).length + 1);
+		styleTable[styleText] = {
+			"name": cssName,
+			"text": styleText
+		};
+	}
+	
+	return "<span class='text-block " + cssName + "'>" + text.replace(/\s/i, "&nbsp;") + "</span>";
+}
+
+function genGlobalCSS() {
+	var cssText = "";
+	for (var key in styleTable) {
+		cssText += "section ." + styleTable[key]["name"] + "{" + styleTable[key]["text"] + "}\n";
+	}
+	return cssText;
 }
 
 function genTable(node, warpObj) {
@@ -1259,12 +1289,7 @@ function getFontDecoration(node, type, slideMasterTextStyles) {
 
 function getTextVerticalAlign(node, type, slideMasterTextStyles) {
 	var baseline = getTextByPathList(node, ["a:rPr", "attrs", "baseline"]);
-	if (baseline === undefined) {
-		return "";
-	} else {
-		baseline = parseInt(baseline) / 1000;
-		return baseline + "%";
-	}
+	return baseline === undefined ? "baseline" : (parseInt(baseline) / 1000) + "%";
 }
 
 function getBorder(node, isSvgMode) {
@@ -1459,6 +1484,10 @@ function getSchemeColorFromTheme(schemeClr) {
 function extractChartData(serNode) {
 	
 	var dataMat = new Array();
+	
+	if (serNode === undefined) {
+		return dataMat;
+	}
 	
 	if (serNode["c:xVal"] !== undefined) {
 		var dataRow = new Array();

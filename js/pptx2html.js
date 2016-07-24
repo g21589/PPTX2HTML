@@ -42,6 +42,9 @@ $(document).ready(function() {
 							case "pptx-thumb":
 								$("#pptx-thumb").attr("src", "data:image/jpeg;base64," + msg.data);
 								break;
+							case "globalCSS":
+								$result.append("<style>" + msg.data + "</style>");
+								break;
 							case "ExecutionTime":
 								$("#info_block").html("Execution Time: " + msg.data + " (ms)");
 								isDone = true;
