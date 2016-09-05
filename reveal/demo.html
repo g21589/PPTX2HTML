@@ -156,6 +156,8 @@ if (localStorage) {
 	alert("Browser don't support Web Storage!");
 }
 Reveal.initialize({
+	width: +localStorage.getItem("slideWidth"),
+	height: +localStorage.getItem("slideHeight"),
 	controls: true,
 	progress: true,
 	history: true,

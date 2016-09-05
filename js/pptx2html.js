@@ -42,6 +42,14 @@ $(document).ready(function() {
 							case "pptx-thumb":
 								$("#pptx-thumb").attr("src", "data:image/jpeg;base64," + msg.data);
 								break;
+							case "slideSize":
+								if (localStorage) {
+									localStorage.setItem("slideWidth", msg.data.width);
+									localStorage.setItem("slideHeight", msg.data.height);
+								} else {
+									alert("Browser don't support Web Storage!");
+								}
+								break;
 							case "globalCSS":
 								$result.append("<style>" + msg.data + "</style>");
 								break;

@@ -56,6 +56,11 @@ function processPPTX(data) {
 	var slideSize = getSlideSize(zip);
 	themeContent = loadTheme(zip);
 	
+	self.postMessage({
+		"type": "slideSize",
+		"data": slideSize
+	});
+	
 	var numOfSlides = filesInfo["slides"].length;
 	for (var i=0; i<numOfSlides; i++) {
 		var filename = filesInfo["slides"][i];
@@ -69,7 +74,7 @@ function processPPTX(data) {
 			"data": (i + 1) * 100 / numOfSlides
 		});
 	}
-	
+
 	self.postMessage({
 		"type": "globalCSS",
 		"data": genGlobalCSS()
