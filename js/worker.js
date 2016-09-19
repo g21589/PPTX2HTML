@@ -1507,31 +1507,36 @@ function extractChartData(serNode) {
 			return "";
 		});
 		dataMat.push(dataRow);
-	} else if (serNode["c:val"] !== undefined) {
+	} else {
 		eachElement(serNode, function(innerNode, index) {
 			var dataRow = new Array();
 			var colName = getTextByPathList(innerNode, ["c:tx", "c:strRef", "c:strCache", "c:pt", "c:v"]) || index;
 
-			// Category
+			// Category (string or number)
 			var rowNames = {};
 			if (getTextByPathList(innerNode, ["c:cat", "c:strRef", "c:strCache", "c:pt"]) !== undefined) {
 				eachElement(innerNode["c:cat"]["c:strRef"]["c:strCache"]["c:pt"], function(innerNode, index) {
 					rowNames[innerNode["attrs"]["idx"]] = innerNode["c:v"];
 					return "";
 				});
+			} else if (getTextByPathList(innerNode, ["c:cat", "c:numRef", "c:numCache", "c:pt"]) !== undefined) {
+				eachElement(innerNode["c:cat"]["c:numRef"]["c:numCache"]["c:pt"], function(innerNode, index) {
+					rowNames[innerNode["attrs"]["idx"]] = innerNode["c:v"];
+					return "";
+				});
 			}
 			
 			// Value
-			eachElement(innerNode["c:val"]["c:numRef"]["c:numCache"]["c:pt"], function(innerNode, index) {
-				dataRow.push({x: innerNode["attrs"]["idx"], y: parseFloat(innerNode["c:v"])});
-				return "";
-			});
+			if (getTextByPathList(innerNode, ["c:val", "c:numRef", "c:numCache", "c:pt"]) !== undefined) {
+				eachElement(innerNode["c:val"]["c:numRef"]["c:numCache"]["c:pt"], function(innerNode, index) {
+					dataRow.push({x: innerNode["attrs"]["idx"], y: parseFloat(innerNode["c:v"])});
+					return "";
+				});
+			}
 			
 			dataMat.push({key: colName, values: dataRow, xlabels: rowNames});
 			return "";
 		});
-	} else {
-		
 	}
 	
 	return dataMat;
