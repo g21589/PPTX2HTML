@@ -412,7 +412,7 @@ function processSpNode(node, warpObj) {
 	debug( {"id": id, "name": name, "idx": idx, "type": type, "order": order} );
 	//debug( JSON.stringify( node ) );
 	
-	return genShape(node, slideLayoutSpNode, slideMasterSpNode, id, name, idx, type, order, warpObj["slideMasterTextStyles"]);
+	return genShape(node, slideLayoutSpNode, slideMasterSpNode, id, name, idx, type, order, warpObj);
 }
 
 function processCxnSpNode(node, warpObj) {
@@ -426,10 +426,10 @@ function processCxnSpNode(node, warpObj) {
 
 	debug( {"id": id, "name": name, "order": order} );
 	
-	return genShape(node, undefined, undefined, id, name, undefined, undefined, order, warpObj["slideMasterTextStyles"]);
+	return genShape(node, undefined, undefined, id, name, undefined, undefined, order, warpObj);
 }
 
-function genShape(node, slideLayoutSpNode, slideMasterSpNode, id, name, idx, type, order, slideMasterTextStyles) {
+function genShape(node, slideLayoutSpNode, slideMasterSpNode, id, name, idx, type, order, warpObj) {
 	
 	var xfrmList = ["p:spPr", "a:xfrm"];
 	var slideXfrmNode = getTextByPathList(node, xfrmList);
@@ -735,7 +735,7 @@ function genShape(node, slideLayoutSpNode, slideMasterSpNode, id, name, idx, typ
 		
 		// TextBody
 		if (node["p:txBody"] !== undefined) {
-			result += genTextBody(node["p:txBody"], slideLayoutSpNode, slideMasterSpNode, type, slideMasterTextStyles);
+			result += genTextBody(node["p:txBody"], slideLayoutSpNode, slideMasterSpNode, type, warpObj);
 		}
 		result += "</div>";
 		
@@ -753,7 +753,7 @@ function genShape(node, slideLayoutSpNode, slideMasterSpNode, id, name, idx, typ
 		
 		// TextBody
 		if (node["p:txBody"] !== undefined) {
-			result += genTextBody(node["p:txBody"], slideLayoutSpNode, slideMasterSpNode, type, slideMasterTextStyles);
+			result += genTextBody(node["p:txBody"], slideLayoutSpNode, slideMasterSpNode, type, warpObj);
 		}
 		result += "</div>";
 		
@@ -842,9 +842,10 @@ function processSpPrNode(node, warpObj) {
 	// TODO:
 }
 
-function genTextBody(textBodyNode, slideLayoutSpNode, slideMasterSpNode, type, slideMasterTextStyles) {
+function genTextBody(textBodyNode, slideLayoutSpNode, slideMasterSpNode, type, warpObj) {
 	
 	var text = "";
+	var slideMasterTextStyles = warpObj["slideMasterTextStyles"];
 	
 	if (textBodyNode === undefined) {
 		return text;
@@ -859,15 +860,15 @@ function genTextBody(textBodyNode, slideLayoutSpNode, slideMasterSpNode, type, s
 			text += genBuChar(pNode);
 			if (rNode === undefined) {
 				// without r
-				text += genSpanElement(pNode, slideLayoutSpNode, slideMasterSpNode, type, slideMasterTextStyles);
+				text += genSpanElement(pNode, slideLayoutSpNode, slideMasterSpNode, type, warpObj);
 			} else if (rNode.constructor === Array) {
 				// with multi r
 				for (var j=0; j<rNode.length; j++) {
-					text += genSpanElement(rNode[j], slideLayoutSpNode, slideMasterSpNode, type, slideMasterTextStyles);
+					text += genSpanElement(rNode[j], slideLayoutSpNode, slideMasterSpNode, type, warpObj);
 				}
 			} else {
 				// with one r
-				text += genSpanElement(rNode, slideLayoutSpNode, slideMasterSpNode, type, slideMasterTextStyles);
+				text += genSpanElement(rNode, slideLayoutSpNode, slideMasterSpNode, type, warpObj);
 			}
 			text += "</div>";
 		}
@@ -879,15 +880,15 @@ function genTextBody(textBodyNode, slideLayoutSpNode, slideMasterSpNode, type, s
 		text += genBuChar(pNode);
 		if (rNode === undefined) {
 			// without r
-			text += genSpanElement(pNode, slideLayoutSpNode, slideMasterSpNode, type, slideMasterTextStyles);
+			text += genSpanElement(pNode, slideLayoutSpNode, slideMasterSpNode, type, warpObj);
 		} else if (rNode.constructor === Array) {
 			// with multi r
 			for (var j=0; j<rNode.length; j++) {
-				text += genSpanElement(rNode[j], slideLayoutSpNode, slideMasterSpNode, type, slideMasterTextStyles);
+				text += genSpanElement(rNode[j], slideLayoutSpNode, slideMasterSpNode, type, warpObj);
 			}
 		} else {
 			// with one r
-			text += genSpanElement(rNode, slideLayoutSpNode, slideMasterSpNode, type, slideMasterTextStyles);
+			text += genSpanElement(rNode, slideLayoutSpNode, slideMasterSpNode, type, warpObj);
 		}
 		text += "</div>";
 	}
@@ -898,6 +899,8 @@ function genTextBody(textBodyNode, slideLayoutSpNode, slideMasterSpNode, type, s
 function genBuChar(node) {
 
 	var pPrNode = node["a:pPr"];
+	
+	debug(JSON.stringify(pPrNode))
 	
 	var lvl = parseInt( getTextByPathList(pPrNode, ["attrs", "lvl"]) );
 	if (isNaN(lvl)) {
@@ -923,6 +926,9 @@ function genBuChar(node) {
 					"; margin-right: " + marginRight + "px" +
 					"; font-size: 20pt" +
 					"'>" + buChar + "</span>";
+		} else {
+			marginLeft = 328600 * 96 / 914400 * lvl;
+			return "<span style='margin-left: " + marginLeft + "px;'>" + buChar + "</span>";
 		}
 	} else {
 		//buChar = '•';
@@ -933,7 +939,9 @@ function genBuChar(node) {
 	return "";
 }
 
-function genSpanElement(node, slideLayoutSpNode, slideMasterSpNode, type, slideMasterTextStyles) {
+function genSpanElement(node, slideLayoutSpNode, slideMasterSpNode, type, warpObj) {
+	
+	var slideMasterTextStyles = warpObj["slideMasterTextStyles"];
 	
 	var text = node["a:t"];
 	if (typeof text !== 'string') {
@@ -966,7 +974,14 @@ function genSpanElement(node, slideLayoutSpNode, slideMasterSpNode, type, slideM
 		};
 	}
 	
-	return "<span class='text-block " + cssName + "'>" + text.replace(/\s/i, "&nbsp;") + "</span>";
+	var linkID = getTextByPathList(node, ["a:rPr", "a:hlinkClick", "attrs", "r:id"]);
+	if (linkID !== undefined) {
+		var linkURL = warpObj["slideResObj"][linkID]["target"];
+		return "<span class='text-block " + cssName + "'><a href='" + linkURL + "' target='_blank'>" + text.replace(/\s/i, "&nbsp;") + "</a></span>";
+	} else {
+		return "<span class='text-block " + cssName + "'>" + text.replace(/\s/i, "&nbsp;") + "</span>";
+	}
+	
 }
 
 function genGlobalCSS() {
@@ -992,7 +1007,7 @@ function genTable(node, warpObj) {
 			
 			if (tcNodes.constructor === Array) {
 				for (var j=0; j<tcNodes.length; j++) {
-					var text = genTextBody(tcNodes[j]["a:txBody"]);							
+					var text = genTextBody(tcNodes[j]["a:txBody"], undefined, undefined, undefined, warpObj);		
 					var rowSpan = getTextByPathList(tcNodes[j], ["attrs", "rowSpan"]);
 					var colSpan = getTextByPathList(tcNodes[j], ["attrs", "gridSpan"]);
 					var vMerge = getTextByPathList(tcNodes[j], ["attrs", "vMerge"]);
