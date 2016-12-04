@@ -9,7 +9,7 @@ Here is the [Online DEMO] page.
 Version
 ----
 
-0.2.5 (Beta Test)
+0.2.7 (Beta Test)
 
 Support Objects
 ----
@@ -19,6 +19,7 @@ Support Objects
   * Font style: blod, italic, underline
   * Color
   * Location
+  * hyperlink
 * Picture
   * Type: jpg/jpeg, png, gif
   * Location
