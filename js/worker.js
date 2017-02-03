@@ -228,9 +228,12 @@ function processSingleSlide(zip, sldFileName, index, slideSize) {
     
     var bgColor = getTextByPathList(content, ["p:sld", "p:cSld", "p:bg", "p:bgPr", "a:solidFill", "a:srgbClr", "attrs", "val"]);
     if (bgColor === undefined) {
-        bgColor = getTextByPathList(slideMasterContent, ["p:sldMaster", "p:cSld", "p:bg", "p:bgPr", "a:solidFill", "a:srgbClr", "attrs", "val"]);
+        bgColor = getTextByPathList(slideLayoutContent, ["p:sldLayout", "p:cSld", "p:bg", "p:bgPr", "a:solidFill", "a:srgbClr", "attrs", "val"]);
         if (bgColor === undefined) {
-            bgColor = "FFF";
+            bgColor = getTextByPathList(slideMasterContent, ["p:sldMaster", "p:cSld", "p:bg", "p:bgPr", "a:solidFill", "a:srgbClr", "attrs", "val"]);
+            if (bgColor === undefined) {
+                bgColor = "FFF";
+            }
         }
     }
     
