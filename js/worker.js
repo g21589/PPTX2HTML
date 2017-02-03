@@ -216,8 +216,8 @@ function processSingleSlide(zip, sldFileName, index, slideSize) {
     
     
     // =====< Step 3 >=====
-    var content = readXmlFile(zip, sldFileName);
-    var nodes = content["p:sld"]["p:cSld"]["p:spTree"];
+    var slideContent = readXmlFile(zip, sldFileName);
+    var nodes = slideContent["p:sld"]["p:cSld"]["p:spTree"];
     var warpObj = {
         "zip": zip,
         "slideLayoutTables": slideLayoutTables,
@@ -226,16 +226,7 @@ function processSingleSlide(zip, sldFileName, index, slideSize) {
         "slideMasterTextStyles": slideMasterTextStyles
     };
     
-    var bgColor = getTextByPathList(content, ["p:sld", "p:cSld", "p:bg", "p:bgPr", "a:solidFill", "a:srgbClr", "attrs", "val"]);
-    if (bgColor === undefined) {
-        bgColor = getTextByPathList(slideLayoutContent, ["p:sldLayout", "p:cSld", "p:bg", "p:bgPr", "a:solidFill", "a:srgbClr", "attrs", "val"]);
-        if (bgColor === undefined) {
-            bgColor = getTextByPathList(slideMasterContent, ["p:sldMaster", "p:cSld", "p:bg", "p:bgPr", "a:solidFill", "a:srgbClr", "attrs", "val"]);
-            if (bgColor === undefined) {
-                bgColor = "FFF";
-            }
-        }
-    }
+    var bgColor = getSlideBackgroundFill(slideContent, slideLayoutContent, slideMasterContent);
     
     var result = "<section style='width:" + slideSize.width + "px; height:" + slideSize.height + "px; background-color: #" + bgColor + "'>"
     
@@ -469,7 +460,7 @@ function genShape(node, slideLayoutSpNode, slideMasterSpNode, id, name, idx, typ
                 "'>";
         
         // Fill Color
-        var fillColor = getFill(node, true);
+        var fillColor = getShapeFill(node, true);
         
         // Border Color        
         var border = getBorder(node, true);
@@ -754,7 +745,7 @@ function genShape(node, slideLayoutSpNode, slideMasterSpNode, id, name, idx, typ
                     getPosition(slideXfrmNode, slideLayoutXfrmNode, slideMasterXfrmNode) + 
                     getSize(slideXfrmNode, slideLayoutXfrmNode, slideMasterXfrmNode) + 
                     getBorder(node, false) +
-                    getFill(node, false) +
+                    getShapeFill(node, false) +
                     " z-index: " + order + ";" +
                 "'>";
         
@@ -1432,7 +1423,21 @@ function getBorder(node, isSvgMode) {
     }
 }
 
-function getFill(node, isSvgMode) {
+function getSlideBackgroundFill(slideContent, slideLayoutContent, slideMasterContent) {
+    var bgColor = getSolidFill( getTextByPathList(slideContent, ["p:sld", "p:cSld", "p:bg", "p:bgPr", "a:solidFill"]) );
+    if (bgColor === undefined) {
+        bgColor = getSolidFill( getTextByPathList(slideLayoutContent, ["p:sldLayout", "p:cSld", "p:bg", "p:bgPr", "a:solidFill"]) );
+        if (bgColor === undefined) {
+            bgColor = getSolidFill( getTextByPathList(slideMasterContent, ["p:sldMaster", "p:cSld", "p:bg", "p:bgPr", "a:solidFill"]) );
+            if (bgColor === undefined) {
+                bgColor = "FFF";
+            }
+        }
+    }
+    return bgColor;
+}
+
+function getShapeFill(node, isSvgMode) {
     
     // 1. presentationML
     // p:spPr [a:noFill, solidFill, gradFill, blipFill, pattFill, grpFill]
@@ -1480,7 +1485,7 @@ function getFill(node, isSvgMode) {
         } else {
             return "background-color: " + fillColor + ";";
         }
-    } else {        
+    } else {
         if (isSvgMode) {
             return "none";
         } else {
@@ -1489,6 +1494,24 @@ function getFill(node, isSvgMode) {
         
     }
     
+}
+
+function getSolidFill(solidFill) {
+    
+    if (solidFill === undefined) {
+        return undefined;
+    }
+    
+    var color = "FFF";
+    
+    if (solidFill["a:srgbClr"] !== undefined) {
+        color = getTextByPathList(solidFill["a:srgbClr"], ["attrs", "val"]);
+    } else if (solidFill["a:schemeClr"] !== undefined) {
+        var schemeClr = "a:" + getTextByPathList(solidFill["a:schemeClr"], ["attrs", "val"]);
+        color = getSchemeColorFromTheme(schemeClr);
+    }
+    
+    return color;
 }
 
 function getSchemeColorFromTheme(schemeClr) {
