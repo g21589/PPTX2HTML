@@ -281,8 +281,10 @@ export function geometrySvg(el, rc, o = {}) {
   if (fxr.filter) content = `<g filter="url(#${fxr.filter})">${content}</g>`;
   let refl = '';
   if (fxr.reflection) refl = reflectionMarkup(fxr.reflection, w, h, geomId, rc, defs);
-  const vb = `0 0 ${r2(Math.max(w, 0.01))} ${r2(Math.max(h, 0.01))}`;
-  return `<svg class="pp-geom" width="${r2(Math.max(w, 0.01))}" height="${r2(Math.max(h, 0.01))}" viewBox="${vb}" overflow="visible" aria-hidden="true">${defs.length ? '<defs>' + defs.join('') + '</defs>' : ''}${refl}${fxr.before}${content}</svg>`;
+  // Chrome does not paint SVG boxes that round to zero size: keep >= 1px
+  // (the viewBox matches so the coordinate system is unchanged).
+  const sw = r2(Math.max(w, 1)), sh = r2(Math.max(h, 1));
+  return `<svg class="pp-geom" width="${sw}" height="${sh}" viewBox="0 0 ${sw} ${sh}" overflow="visible" aria-hidden="true">${defs.length ? '<defs>' + defs.join('') + '</defs>' : ''}${refl}${fxr.before}${content}</svg>`;
 }
 
 function compoundStroke(d, line, paint, rc, defs) {

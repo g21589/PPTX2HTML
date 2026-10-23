@@ -119,7 +119,8 @@ function describe(family, accent) {
   const all = (c) => ({ left: c, right: c, top: c, bottom: c, insideH: c, insideV: c });
   switch (family) {
     case 'Themed1': {
-      if (!a) return { wholeTbl: { text: clr('tx1') }, band1H: { fill: clr('tx1', 'alpha', 40000) }, band1V: { fill: clr('tx1', 'alpha', 40000) } };
+      // "No Style, No Grid".
+      if (!a) return { wholeTbl: { text: clr('tx1') } };
       const b = clr(a);
       return {
         wholeTbl: { text: clr('dk1'), ...all(b) },
@@ -134,7 +135,8 @@ function describe(family, accent) {
     case 'Themed2': {
       if (!a) {
         const t = clr('tx1', 'tint', 50000);
-        return { wholeTbl: { text: clr('tx1'), left: t, right: t, top: t, bottom: t, insideH: clr('tx1'), insideV: clr('tx1') }, band1H: { fill: clr('tx1', 'alpha', 20000) }, band1V: { fill: clr('tx1', 'alpha', 20000) } };
+        // "No Style, Table Grid".
+        return { wholeTbl: { text: clr('tx1'), left: t, right: t, top: t, bottom: t, insideH: clr('tx1'), insideV: clr('tx1') } };
       }
       const t = clr(a, 'tint', 50000);
       return {

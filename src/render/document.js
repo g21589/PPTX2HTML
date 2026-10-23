@@ -7,9 +7,22 @@ import { slideHtml } from './slide.js';
 import { BASE_CSS } from './styles.js';
 import { fontFaceCss } from './embedded-fonts.js';
 
+/** Replace media descriptors (sounds) by URL objects for the runtime. */
+function mediaRefs(value, rc) {
+  if (Array.isArray(value)) return value.map((v) => mediaRefs(v, rc));
+  if (value && typeof value === 'object') {
+    if (value.partName !== undefined || value.external) return rc ? { url: rc.url(value).replace(/&amp;/g, '&'), mime: value.mime || null } : null;
+    if (value instanceof Set) return [...value];
+    const out = {};
+    for (const [k, v] of Object.entries(value)) out[k] = mediaRefs(v, rc);
+    return out;
+  }
+  return value;
+}
+
 /** Data consumed by the runtime player (timing, transitions, notes...). */
-export function playerData(pres) {
-  return {
+export function playerData(pres, rc) {
+  return mediaRefs({
     width: pres.width,
     height: pres.height,
     show: pres.show,
@@ -23,7 +36,7 @@ export function playerData(pres) {
       timing: s.timing || null,
       notes: s.notes || null,
     })),
-  };
+  }, rc);
 }
 
 function jsonScript(obj) {
@@ -38,7 +51,7 @@ export function renderSlides(pres, opts = {}) {
   const rc = new RenderContext(pres, opts);
   const slides = pres.slides.map((s) => slideHtml(s, rc));
   const css = BASE_CSS + fontFaceCss(pres, rc);
-  return { slides, css, data: playerData(pres), rc };
+  return { slides, css, data: playerData(pres, rc), rc };
 }
 
 /**

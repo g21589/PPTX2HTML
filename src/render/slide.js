@@ -32,6 +32,9 @@ function dataAttrs(el) {
     if (l.customShow !== undefined) a += ` data-show="${l.customShow}"`;
   }
   if (el.ph) a += ` data-ph="${escapeXml(el.ph.type)}"`;
+  if (el.rot) a += ` data-rot="${r2(el.rot)}"`;
+  if (el.flipH) a += ' data-fh="1"';
+  if (el.flipV) a += ' data-fv="1"';
   return a;
 }
 
