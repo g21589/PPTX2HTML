@@ -1,0 +1,55 @@
+{
+  "name": "pptx2html",
+  "version": "1.0.0",
+  "description": "Convert PowerPoint (PPTX) files to HTML with high fidelity rendering of shapes, text, tables, charts, media, animations and transitions. Pure JavaScript, zero runtime dependencies.",
+  "type": "module",
+  "main": "./src/index.js",
+  "module": "./src/index.js",
+  "exports": {
+    ".": "./src/index.js",
+    "./player": "./src/runtime/player.js",
+    "./package.json": "./package.json"
+  },
+  "bin": {
+    "pptx2html": "./bin/pptx2html.js"
+  },
+  "files": [
+    "src",
+    "bin",
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "node tools/build.mjs",
+    "test": "node --test test/unit/",
+    "test:browser": "node --test test/browser/",
+    "verify": "node tools/verify.mjs",
+    "fixtures": "node test/fixtures/build-fixtures.mjs",
+    "lint": "eslint src bin tools test"
+  },
+  "keywords": [
+    "pptx",
+    "powerpoint",
+    "html",
+    "converter",
+    "presentation",
+    "slides",
+    "ooxml",
+    "animation"
+  ],
+  "author": "g21589",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/g21589/PPTX2HTML.git"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "devDependencies": {
+    "esbuild": "0.25.10",
+    "playwright": "1.63.0",
+    "pngjs": "7.0.0"
+  }
+}

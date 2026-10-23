@@ -1,1 +1,4 @@
-files/test/*
+node_modules/
+/out/
+/verify-report/
+*.log
