@@ -1,7 +1,7 @@
 /**
  * Fixture catalog: pictures, groups, tables, charts, SmartArt, media, backgrounds and masters.
  */
-import { shape, label, solid, ln, png, wav, picture, group, graphicFrame, textBox, px, esc } from '../lib.mjs';
+import { shape, label, solid, ln, png, wav, emf, wmf, picture, group, graphicFrame, textBox, px, esc } from '../lib.mjs';
 
 export const name = 'objects';
 export const title = 'Pictures, groups, tables, charts, media, backgrounds';
@@ -72,6 +72,46 @@ export function build(deck) {
         { kind: 'pixel', x: 604, y: 74, color: '#FFFFFF', tol: 10 },
         { kind: 'pixel', x: 680, y: 560, color: '#7030A0', tol: 30 },
         { kind: 'dom', selector: 'feColorMatrix', min: 2 },
+      ],
+    });
+  }
+
+  // --- Metafiles ---------------------------------------------------------------
+  {
+    const s = deck.slide({ name: 'Metafiles' });
+    label(s, 'Metafile pictures: EMF and WMF converted to SVG (brushes, pens, shapes, hatches)');
+    // COLORREF is 0x00bbggrr.
+    const emfRid = s.image(emf(1000, 750, [
+      [39, [1, 0, 0x0050b000, 0]], [37, [1]], // green brush
+      [38, [2, 0, 6, 0, 0]], [37, [2]], // black pen
+      [43, [100, 100, 900, 650]], // RECTANGLE
+      [39, [3, 0, 0x000000ff, 0]], [37, [3]], // red brush
+      [42, [300, 200, 700, 550]], // ELLIPSE
+      [38, [4, 0, 10, 0, 0x00c07000]], [37, [4]], // blue pen
+      [4, [150, 600, 850, 700, 3, 150, 700, 500, 600, 850, 700]], // POLYLINE
+    ]), 'emf');
+    s.add(picture({ id: s.id(), name: 'emf', rid: emfRid, x: 40, y: 110, w: 500, h: 375 }));
+    const wmfRid = s.image(wmf(1000, 750, [
+      [0x020b, [0, 0]], [0x020c, [750, 1000]], // window origin / extent
+      [0x02fc, [0, 0x7000, 0x00c0, 0]], [0x012d, [0]], // blue brush
+      [0x02fa, [0, 6, 0, 0, 0]], [0x012d, [1]], // black pen
+      [0x041b, [650, 900, 100, 100]], // RECTANGLE
+      [0x02fc, [0, 0xc0ff, 0, 0]], [0x012d, [2]], // yellow brush
+      [0x0418, [550, 700, 200, 300]], // ELLIPSE
+      [0x02fc, [2, 0x00ff, 0, 5]], [0x012d, [3]], // red diagonal-cross hatch
+      [0x0324, [3, 200, 740, 500, 660, 800, 740]], // POLYGON
+    ]), 'wmf');
+    s.add(picture({ id: s.id(), name: 'wmf', rid: wmfRid, x: 600, y: 110, w: 500, h: 375 }));
+    out.push({
+      slide: s.index, feature: 'metafile', compareLO: true,
+      checks: [
+        { kind: 'pixel', x: 290, y: 297, color: '#FF0000', tol: 20 },
+        { kind: 'pixel', x: 115, y: 185, color: '#00B050', tol: 20 },
+        { kind: 'pixel', x: 65, y: 135, color: '#FFFFFF', tol: 10 },
+        { kind: 'pixel', x: 850, y: 297, color: '#FFC000', tol: 20 },
+        { kind: 'pixel', x: 675, y: 185, color: '#0070C0', tol: 20 },
+        { kind: 'pixel', x: 625, y: 135, color: '#FFFFFF', tol: 10 },
+        { kind: 'dom', selector: 'image[href^="data:image/svg+xml"]', min: 2 },
       ],
     });
   }

@@ -113,3 +113,41 @@ export function wav(ms = 400, freq = 440, rate = 8000) {
   h.writeUInt32LE(rate * 2, 28); h.writeUInt16LE(2, 32); h.writeUInt16LE(16, 34); h.write('data', 36); h.writeUInt32LE(data.length, 40);
   return Buffer.concat([h, data]);
 }
+
+/**
+ * A minimal EMF (MM_TEXT, 1 logical unit = 1 device pixel).
+ * `records` are [type, int32[]] pairs written after the header.
+ */
+export function emf(width, height, records) {
+  const rec = (type, ints) => {
+    const b = Buffer.alloc(8 + ints.length * 4);
+    b.writeUInt32LE(type, 0); b.writeUInt32LE(b.length, 4);
+    ints.forEach((v, i) => b.writeInt32LE(v, 8 + i * 4));
+    return b;
+  };
+  const body = records.map(([t, ints]) => rec(t, ints));
+  const eof = rec(14, [0, 16, 20]);
+  const mm = [Math.round(width / 4), Math.round(height / 4)]; // 4 px per mm
+  const header = rec(1, [0, 0, width - 1, height - 1, 0, 0, mm[0] * 100, mm[1] * 100, 0x464d4520, 0x10000, 0, body.length + 2, 8, 0, 0, 0, width, height, mm[0], mm[1]]);
+  const out = Buffer.concat([header, ...body, eof]);
+  out.writeUInt32LE(out.length, 48);
+  return out;
+}
+
+/** A placeable WMF; `records` are [function, int16[]] pairs. */
+export function wmf(width, height, records) {
+  const words = [];
+  for (const [fn, args] of records) words.push(3 + args.length, 0, fn, ...args);
+  words.push(3, 0, 0);
+  const total = 9 + words.length;
+  const h = Buffer.alloc(22 + 18);
+  h.writeUInt32LE(0x9ac6cdd7, 0);
+  h.writeInt16LE(0, 6); h.writeInt16LE(0, 8); h.writeInt16LE(width, 10); h.writeInt16LE(height, 12); h.writeUInt16LE(1440, 14);
+  let sum = 0;
+  for (let i = 0; i < 10; i++) sum ^= h.readUInt16LE(i * 2);
+  h.writeUInt16LE(sum, 20);
+  [1, 9, 0x300, total & 0xffff, total >>> 16, 8, 64, 0, 0].forEach((w, i) => h.writeUInt16LE(w, 22 + i * 2));
+  const b = Buffer.alloc(words.length * 2);
+  words.forEach((w, i) => b.writeUInt16LE(w & 0xffff, i * 2));
+  return Buffer.concat([h, b]);
+}
