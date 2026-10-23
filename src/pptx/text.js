@@ -303,7 +303,8 @@ export function autoNumber(scheme, n) {
   else if (s.startsWith('ea1') || s.startsWith('thai') || s.startsWith('hindi') || s.startsWith('hebrew')) {
     base = s.startsWith('ea1') ? cjk(n) : String(n);
     suffix = /Period/.test(s) ? 'Period' : /Plain/.test(s) ? 'Plain' : 'Period';
-    if (s.startsWith('ea1') && suffix === 'Period') return base + '．';
+    if (s.startsWith('ea1') && /DbPeriod/.test(s)) return base + '．';
+    if (s.startsWith('ea1') && suffix === 'Period') return base + '.';
   } else { base = String(n); suffix = 'Period'; }
   switch (suffix) {
     case 'Period': return base + '.';

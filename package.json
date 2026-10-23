@@ -22,8 +22,8 @@
   ],
   "scripts": {
     "build": "node tools/build.mjs",
-    "test": "node --test test/unit/",
-    "test:browser": "node --test test/browser/",
+    "test": "node --test test/unit/*.test.mjs",
+    "verify:quick": "node tools/verify.mjs --no-lo",
     "verify": "node tools/verify.mjs",
     "fixtures": "node test/fixtures/build-fixtures.mjs",
     "lint": "eslint src bin tools test"

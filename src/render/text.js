@@ -72,7 +72,10 @@ export function runCss(st, rc, o = {}) {
   }
   const sh = textShadowCss(st.effects || o.shapeEffects);
   if (sh) s += `text-shadow:${sh};`;
-  if (st.effects && st.effects.reflection) s += '-webkit-box-reflect:below 0 linear-gradient(transparent 50%,rgba(255,255,255,.35));';
+  if (st.effects && st.effects.reflection) {
+    const rf = st.effects.reflection;
+    s += `display:inline-block;-webkit-box-reflect:below ${r2(rf.dist || 0)}px linear-gradient(transparent ${r2((1 - (rf.endPos || 0.5)) * 100)}%,rgba(255,255,255,${r4(rf.stA || 0.5)}));`;
+  }
   if (st.rtlRun === '1') s += 'unicode-bidi:embed;direction:rtl;';
   return s;
 }
@@ -99,7 +102,8 @@ function lineHeight(para, firstSize) {
 function spacingPx(sp, size) {
   if (!sp) return 0;
   if (sp.pt !== undefined) return sp.pt * PX_PER_PT;
-  return sp.pct * size * PX_PER_PT * LINE;
+  // Percentage spacing is relative to the text size.
+  return sp.pct * size * PX_PER_PT;
 }
 
 function bulletHtml(para, rc) {
@@ -143,6 +147,7 @@ export function paragraphsHtml(tb, rc, o = {}) {
     if (p.marL) ps += p.rtl ? `padding-right:${r2(p.marL)}px;` : `padding-left:${r2(p.marL)}px;`;
     if (p.marR) ps += p.rtl ? `padding-left:${r2(p.marR)}px;` : `padding-right:${r2(p.marR)}px;`;
     if (p.indent) ps += `text-indent:${r2(p.indent)}px;`;
+    if (o.nowrap) ps += `align-self:${p.align === 'center' ? 'center' : (p.align === 'right') !== !!p.rtl ? 'flex-end' : 'flex-start'};`;
     const before = spacingPx(p.spcBef, firstSize);
     const after = spacingPx(p.spcAft, firstSize);
     if (before) ps += `margin-top:${r2(before)}px;`;
@@ -204,8 +209,8 @@ export function textBodyHtml(tb, box, rc, o = {}) {
   }
   if (b.wrap === 'none') cls += ' pp-nowrap';
   if (b.anchorCtr) cls += ' pp-actr';
-  let inner = paragraphsHtml(tb, rc, o);
-  if (b.numCol > 1) inner = `<div class="pp-cols" style="column-count:${b.numCol};column-gap:${r2(b.spcCol)}px;height:100%">${inner}</div>`;
+  let inner = paragraphsHtml(tb, rc, { ...o, nowrap: b.wrap === 'none' && !vertical });
+  if (b.numCol > 1) inner = `<div class="pp-cols" style="column-count:${b.numCol};column-gap:${r2(b.spcCol)}px;column-fill:auto;height:100%">${inner}</div>`;
   else if (b.anchorCtr) inner = `<div class="pp-actr-in">${inner}</div>`;
   const fit = b.autofit && b.autofit.type === 'norm' ? ' data-autofit="1"' : '';
   return `<div class="${cls}" style="${s}"${fit}>${inner}</div>`;

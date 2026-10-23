@@ -320,7 +320,7 @@ class ChartRenderer {
     c.series.forEach((s, i) => {
       if (del.has(s.idx)) return;
       const t = s.plot.type;
-      const isLine = /line|scatter|radar/i.test(t) && !(t === 'radarChart' && s.plot.radarStyle === 'filled');
+      const isLine = /line|scatter|radar|stock/i.test(t) && !(t === 'radarChart' && s.plot.radarStyle === 'filled');
       const marker = isLine ? this.markerFor(s, i) : null;
       entries.push({
         label: s.name || `Series${i + 1}`,
@@ -331,6 +331,13 @@ class ChartRenderer {
       });
     });
     if (c.plots.some((p) => p.type === 'barChart' && p.barDir === 'bar' && /stacked/i.test(p.grouping))) entries.reverse();
+    // Trend lines get their own legend entries ("Linear (Series)").
+    c.series.forEach((s, i) => {
+      for (const t of s.trendlines || []) {
+        const kind = { linear: 'Linear', exp: 'Expon.', log: 'Log.', poly: 'Poly.', power: 'Power', movingAvg: 'Mov. Avg.' }[t.type] || t.type;
+        entries.push({ label: `${kind} (${s.name || 'Series' + (i + 1)})`, line: this.trendLine(s, i, t), kind: 'line', marker: null });
+      }
+    });
     return entries;
   }
 
@@ -415,6 +422,7 @@ class ChartRenderer {
     if (plot.type === 'lineChart' && plot.showMarker === false && (!m || symbol === 'auto')) symbol = 'none';
     if (plot.type === 'scatterChart' && /^(line|smooth)$/.test(plot.scatterStyle) && (!m || symbol === 'auto')) symbol = 'none';
     if (plot.type === 'radarChart' && plot.radarStyle !== 'marker' && (!m || symbol === 'auto')) symbol = 'none';
+    if (plot.type === 'stockChart' && !m) symbol = 'none';
     if (symbol === 'auto') symbol = MARKERS[si % MARKERS.length];
     const color = this.seriesColor(ser, si);
     const fill = m && m.fill !== undefined ? m.fill : { type: 'solid', color };
@@ -725,9 +733,10 @@ class ChartRenderer {
         const xv = gi.catAxis.def.crosses === 'max' || def.crosses === 'max' ? sc.max : Math.min(Math.max(cv, sc.min), sc.max);
         pos = this.xPos(gi, xv, area);
       } else {
+        // The value axis crosses the category axis at its first category
+        // (bottom for horizontal bar charts) unless crosses="max".
         const crossMax = gi.catAxis.def.crosses === 'max' || def.crosses === 'max';
-        let rev = gi.catAxis.def.orientation === 'maxMin';
-        if (!gi.vertical) rev = !rev;
+        const rev = gi.catAxis.def.orientation === 'maxMin';
         const atEnd = crossMax !== rev;
         if (gi.vertical) pos = atEnd ? area.x + area.w : area.x;
         else pos = atEnd ? area.y : area.y + area.h;
@@ -1176,7 +1185,7 @@ class ChartRenderer {
     const data = pts.filter(Boolean).map((q) => [xy ? q[4] : q[3] + 1, q[2]]);
     if (data.length < 2) return '';
     for (const t of ser.trendlines) {
-      const line = finalizeLine({ fill: { type: 'solid', color: this.seriesColor(ser, si) }, w: 2.25 * PX_PER_PT / 1.333, dash: 'sysDot', ...(t.line || {}) });
+      const line = this.trendLine(ser, si, t);
       const fn = fitTrend(t, data);
       if (!fn) continue;
       const x0 = Math.min(...data.map((d) => d[0])) - (t.backward || 0);
@@ -1194,6 +1203,10 @@ class ChartRenderer {
       if (path.length > 1) s += `<path d="${path.join('')}" fill="none" ${this.strokeAttr(line)}/>`;
     }
     return s;
+  }
+
+  trendLine(ser, si, t) {
+    return finalizeLine({ fill: { type: 'solid', color: this.seriesColor(ser, si) }, w: 2.25 * PX_PER_PT, dash: 'sysDot', cap: 'rnd', ...(t.line || {}) });
   }
 
   // ---- pie ---------------------------------------------------------------
