@@ -89,7 +89,7 @@ API
 | `slides` | all | 0-based indices of the slides to build. |
 | `title`, `lang` | from the deck | Document title and language. |
 | `mediaUrl(media, store)` | data URIs | Return a URL for a picture or media part (`store.bytes(media.id)` gives its bytes). |
-| `convertMetafiles` | `true` | Convert EMF/WMF pictures to SVG. |
+| `convertMetafiles` | `true` | Convert pictures browsers cannot show: EMF/WMF to SVG, TIFF to PNG. |
 | `liveDates` | `false` | Render date fields with the current date. |
 | `strict` | `false` | Throw on the first slide that cannot be built. |
 | `idPrefix` | `'pp'` | Prefix of generated element ids. |

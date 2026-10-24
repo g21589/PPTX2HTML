@@ -251,6 +251,8 @@ export class SlideBuilder {
     }
     const spTree = sld.path('p:cSld', 'p:spTree');
     if (spTree) slide.elements.push(...this.tree(spTree, this.baseCtx, { layer: 'slide' }));
+    const controls = sld.path('p:cSld', 'p:controls');
+    if (controls) slide.elements.push(...this.controls(controls, this.baseCtx));
 
     try {
       slide.transition = parseTransition(sld, this.baseCtx);
@@ -438,50 +440,48 @@ export class SlideBuilder {
 
   /** Visual properties (fill, line, effects) from spPr chain and style. */
   visual(chain, el, spPrName = 'spPr') {
-    let style = null;
-    let styleCtx = null;
-    for (const { node, ctx } of chain) {
-      const s = pc(node, 'style');
-      if (s) { style = s; styleCtx = ctx; break; }
-    }
+    // Each inheritance level (shape, layout placeholder, master placeholder)
+    // contributes its spPr first and then its style references.
+    const levels = chain.map(({ node, ctx }) => ({ spPr: pc(node, spPrName), style: pc(node, 'style'), ctx }));
+    const first = levels.find((l) => l.style);
+    const style = first ? first.style : null;
+    const styleCtx = first ? first.ctx : null;
     // Fill.
     let fill;
-    for (const { node, ctx } of chain) {
-      const spPr = pc(node, spPrName);
-      const f = spPr ? parseFill(spPr, ctx) : undefined;
+    for (const l of levels) {
+      const f = l.spPr ? parseFill(l.spPr, l.ctx) : undefined;
       if (f !== undefined) { fill = f; break; }
+      if (l.style) { fill = fillFromRef(l.style.child('a:fillRef'), l.ctx); if (fill !== undefined) break; }
     }
-    if (fill === undefined && style) fill = fillFromRef(style.child('a:fillRef'), styleCtx);
-    else if (fill && fill.type === 'grad' && !fill.stops.length) {
+    if (fill && fill.type === 'grad' && !fill.stops.length) {
       // A gradient without stops takes them from the style matrix (or from the
       // next level of the inheritance chain).
       let base = style ? fillFromRef(style.child('a:fillRef'), styleCtx) : undefined;
       if (!base || base.type !== 'grad') {
-        for (const { node, ctx } of chain.slice(1)) {
-          const spPr = pc(node, spPrName);
-          const f = spPr ? parseFill(spPr, ctx) : undefined;
+        for (const l of levels.slice(1)) {
+          const f = l.spPr ? parseFill(l.spPr, l.ctx) : undefined;
           if (f && f.type === 'grad' && f.stops.length) { base = f; break; }
         }
       }
       if (base && base.type === 'grad') fill = { ...fill, stops: base.stops };
       else if (base && base.type === 'solid') fill = base;
     }
-    // Line.
+    // Line: merged from the deepest level up.
     const parts = [];
-    if (style) parts.push(lineFromRef(style.child('a:lnRef'), styleCtx));
-    for (let i = chain.length - 1; i >= 0; i--) {
-      const spPr = pc(chain[i].node, spPrName);
-      if (spPr && spPr.child('a:ln')) parts.push(parseLine(spPr.child('a:ln'), chain[i].ctx));
+    for (let i = levels.length - 1; i >= 0; i--) {
+      const l = levels[i];
+      if (l.style) parts.push(lineFromRef(l.style.child('a:lnRef'), l.ctx));
+      if (l.spPr && l.spPr.child('a:ln')) parts.push(parseLine(l.spPr.child('a:ln'), l.ctx));
     }
     const line = finalizeLine(mergeLines(...parts));
     // Effects.
     let effects;
-    for (const { node, ctx } of chain) {
-      const spPr = pc(node, spPrName);
-      if (spPr && spPr.child('a:effectLst')) { effects = parseEffects(spPr.child('a:effectLst'), ctx); break; }
-      if (spPr && spPr.child('a:effectDag')) { effects = null; ctx.note('approx', 'effectDag'); break; }
+    for (const l of levels) {
+      const sp = l.spPr;
+      if (sp && sp.child('a:effectLst')) { effects = parseEffects(sp.child('a:effectLst'), l.ctx); break; }
+      if (sp && sp.child('a:effectDag')) { effects = null; l.ctx.note('approx', 'effectDag'); break; }
+      if (l.style) { effects = effectsFromRef(l.style.child('a:effectRef'), l.ctx); if (effects !== undefined) break; }
     }
-    if (effects === undefined && style) effects = effectsFromRef(style.child('a:effectRef'), styleCtx);
     // 3D.
     for (const { node, ctx } of chain) {
       const spPr = pc(node, spPrName);
@@ -751,18 +751,67 @@ export class SlideBuilder {
 
   /** Preview picture of a legacy object: the VML shape with the given spid. */
   vmlImage(spid, ctx) {
+    const shape = this.vmlShape(spid, ctx);
+    return shape ? shape.image : null;
+  }
+
+  /** VML shape by spid: its preview image and CSS-like position in px. */
+  vmlShape(spid, ctx) {
     const pkg = this.doc.pkg;
+    const ids = /^\d+$/.test(spid) ? ['_x0000_s' + spid, spid] : [spid];
     for (const r of pkg.relsByType(ctx.part, 'vmlDrawing')) {
       if (r.external || !pkg.has(r.partName)) continue;
       const vml = pkg.text(r.partName);
-      const id = spid.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      const m = new RegExp(`<v:shape\\b[^>]*\\b(?:id|o:spid)=["']${id}["'][\\s\\S]*?</v:shape>`).exec(vml);
-      if (!m) continue;
-      const img = /<v:imagedata\b[^>]*\b(?:o:relid|r:id)=["']([^"']+)["']/.exec(m[0]);
-      if (!img) continue;
-      return ctx.with({ part: r.partName }).image(img[1]);
+      for (const id of ids) {
+        const q = id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const m = new RegExp(`<v:shape\\b[^>]*\\b(?:id|o:spid)=["']${q}["'][\\s\\S]*?</v:shape>`).exec(vml);
+        if (!m) continue;
+        const img = /<v:imagedata\b[^>]*\b(?:o:relid|r:id)=["']([^"']+)["']/.exec(m[0]);
+        const style = /\bstyle=(["'])([\s\S]*?)\1/.exec(m[0]);
+        const box = {};
+        const UNIT = { pt: 4 / 3, px: 1, in: 96, cm: 96 / 2.54, mm: 96 / 25.4, emu: 1 / 9525 };
+        for (const decl of (style ? style[2] : '').split(';')) {
+          const [k, val] = decl.split(':').map((t) => (t || '').trim());
+          const mm = /^(-?[\d.]+)([a-z]*)$/.exec(val || '');
+          if (mm && ['left', 'top', 'width', 'height', 'margin-left', 'margin-top'].includes(k)) box[k] = Number(mm[1]) * (UNIT[mm[2] || 'emu'] || 1);
+        }
+        return { image: img ? ctx.with({ part: r.partName }).image(img[1]) : null, box };
+      }
     }
     return null;
+  }
+
+  /** ActiveX controls: shown with their preview picture. */
+  controls(node, ctx) {
+    const out = [];
+    const list = [];
+    for (const c of node.children) {
+      if (c.local === 'control') list.push(c);
+      else if (c.local === 'AlternateContent') for (const x of chooseAlternate(c)) if (x.local === 'control') list.push(x);
+    }
+    for (const c of list) {
+      const pic = c.child('p:pic');
+      if (pic) {
+        const el = this.picture(pic, ctx, { layer: 'slide' });
+        if (el) out.push(el);
+        continue;
+      }
+      const vml = c.attrs.spid ? this.vmlShape(c.attrs.spid, ctx) : null;
+      if (!vml || !vml.image) { ctx.note('approx', 'ActiveX control without picture preview'); continue; }
+      const b = vml.box;
+      const x = b.left ?? b['margin-left'] ?? 0, y = b.top ?? b['margin-top'] ?? 0;
+      const w = b.width ?? emu2px(Number(c.attrs.imgW || 0)), h = b.height ?? emu2px(Number(c.attrs.imgH || 0));
+      out.push({
+        kind: 'pic', id: c.attrs.spid, name: c.attrs.name || '', descr: '', hidden: false, layer: 'slide', ph: null,
+        domId: 's' + this.info.index + '-s-' + c.attrs.spid + '-' + (this.idSeq++),
+        x, y, w, h, wEmu: w * 9525, hEmu: h * 9525, rot: 0, flipH: false, flipV: false,
+        geom: { name: 'rect', ...presetGeometry('rect', w * 9525, h * 9525, {}, 1 / 9525) },
+        fill: { type: 'none' }, line: null, effects: null,
+        blip: { type: 'blip', image: vml.image, srcRect: null, rotWithShape: true, dpi: 0, alpha: 1, effects: [] },
+        control: { name: c.attrs.name || '' },
+      });
+    }
+    return out;
   }
 
   diagram(gd, ctx, o, el) {

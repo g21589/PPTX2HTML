@@ -9,7 +9,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { convert, version } from '../src/index.js';
-import { emfToSvg } from '../src/util/emf.js';
+import { toWebImage } from '../src/util/webimage.js';
 
 const HELP = `pptx2html ${version} - convert PowerPoint (.pptx) presentations to HTML
 
@@ -86,10 +86,8 @@ function assetWriter(dir, base) {
     let bytes = store.bytes(media.id);
     if (!bytes) return '';
     let name = path.posix.basename(media.partName);
-    if (media.mime === 'image/x-emf' || media.mime === 'image/x-wmf') {
-      const svg = emfToSvg(bytes, media.mime);
-      if (svg) { bytes = Buffer.from(svg); name = name.replace(/\.[^.]*$/, '') + '.svg'; }
-    }
+    const web = toWebImage(bytes, media.mime);
+    if (web) { bytes = web.bytes; name = name.replace(/\.[^.]*$/, '') + '.' + web.ext; }
     // Media from different folders may share a file name.
     let unique = name, k = 1;
     while (used.has(unique)) unique = name.replace(/(\.[^.]*)?$/, `-${k++}$1`);

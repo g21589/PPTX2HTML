@@ -2,7 +2,7 @@
  * Render context: unique ids, media URLs and options shared by renderers.
  */
 import { toBase64 } from '../util/base64.js';
-import { emfToSvg } from '../util/emf.js';
+import { toWebImage } from '../util/webimage.js';
 import { escapeXml } from '../util/xml.js';
 
 /** Only allow harmless URL schemes for linked media. */
@@ -43,12 +43,9 @@ export class RenderContext {
     if (!url) {
       let bytes = this.pres.media.bytes(media.id);
       let mime = media.mime;
-      if ((mime === 'image/x-emf' || mime === 'image/x-wmf') && bytes && this.opts.convertMetafiles !== false) {
-        const svg = emfToSvg(bytes, mime);
-        if (svg) {
-          bytes = new TextEncoder().encode(svg);
-          mime = 'image/svg+xml';
-        }
+      if (this.opts.convertMetafiles !== false) {
+        const web = toWebImage(bytes, mime);
+        if (web) ({ bytes, mime } = web);
       }
       url = bytes ? 'data:' + mime + ';base64,' + toBase64(bytes) : '';
     } else url = escapeXml(url);
