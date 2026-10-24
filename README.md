@@ -150,8 +150,9 @@ underline styles, strike, caps, baseline, spacing, kerning, highlight,
 outline, gradient text, shadows, bullets (characters, pictures,
 auto-numbering), indents, tab stops, line and
 paragraph spacing (extra spacing above the line, as Office does), alignment,
-vertical text, columns, insets, autofit (font scale and line spacing
-reduction), WordArt transforms (all 40 warp and follow-path presets),
+vertical text, columns, insets, autofit (Office's stored font scale and
+line spacing reduction, refitted at runtime only where fonts differ or no
+fit was stored), WordArt transforms (all 40 warp and follow-path presets),
 fields (slide number, dates), hyperlinks and actions, symbol fonts mapped to
 Unicode.
 

@@ -17,6 +17,7 @@ export const BASE_CSS = `
 .pp-actr-in{max-width:100%}
 .pp-bu{display:inline-block;text-indent:0;white-space:pre;font-style:normal;font-weight:normal;text-decoration:none}
 .pp-bu-gap{font-size:0.25em;white-space:pre}
+.pp-p .pp-bu-w{white-space:nowrap}
 .pp-a{color:inherit;text-decoration:none}
 .pp-hit{position:absolute;left:0;top:0;width:100%;height:100%;z-index:1;display:block;background:transparent}
 .pp-table{border-collapse:collapse;table-layout:fixed;border-spacing:0}
