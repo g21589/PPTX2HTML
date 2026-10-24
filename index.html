@@ -1,144 +1,220 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>PPTX2HTML</title>
-
-<!-- Bootstrap CSS -->
-<link href="css/bootstrap.min.css" rel="stylesheet">
-
-<!-- HTML5 Shim and Respond.js IE8 support of HTML5 elements and media queries -->
-<!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
-<!--[if lt IE 9]>
-<script src="https://oss.maxcdn.com/html5shiv/3.7.2/html5shiv.min.js"></script>
-<script src="https://oss.maxcdn.com/respond/1.4.2/respond.min.js"></script>
-<![endif]-->
-
-<link rel="stylesheet" href="./css/font-awesome.min.css">
-<link rel="stylesheet" href="./css/pptx2html.css">
-
-<script type="text/javascript" src="./js/jquery-1.11.3.min.js"></script>
-<script type="text/javascript" src="./js/FileSaver.min.js"></script>
-<script type="text/javascript" src="./js/lz-string.min.js"></script>
-
+<meta name="description" content="Convert PowerPoint presentations to HTML in the browser: shapes, text, tables, charts, media, animations and transitions.">
+<style>
+:root {
+  --bg: #f4f5f7; --panel: #ffffff; --text: #1d2330; --muted: #5d6677; --line: #d9dde4;
+  --accent: #c43e1c; --accent-text: #ffffff; --drop: #eef1f5; --warn: #9a5b00; --err: #b3261e;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #16181d; --panel: #1f2229; --text: #e6e8ec; --muted: #9aa3b2; --line: #343944; --accent: #e8643f; --drop: #23272f; --warn: #e0a64a; --err: #f08a80; }
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body { display: flex; flex-direction: column; background: var(--bg); color: var(--text); font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
+header { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; padding: 10px 16px; background: var(--panel); border-bottom: 1px solid var(--line); }
+header h1 { margin: 0; font-size: 17px; letter-spacing: .2px; }
+header h1 span { color: var(--accent); }
+.tag { color: var(--muted); font-size: 13px; }
+.actions { display: flex; flex-wrap: wrap; gap: 8px; margin-left: auto; align-items: center; }
+button, .button, select { font: inherit; height: 32px; padding: 0 12px; border-radius: 6px; border: 1px solid var(--line); background: var(--panel); color: var(--text); cursor: pointer; display: inline-flex; align-items: center; gap: 6px; text-decoration: none; }
+button:hover:not(:disabled), .button:hover { border-color: var(--muted); }
+button:disabled { opacity: .45; cursor: default; }
+.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-text); }
+.primary:hover:not(:disabled) { filter: brightness(1.08); border-color: var(--accent); }
+main { flex: 1; display: flex; min-height: 0; }
+#stage { flex: 1; position: relative; min-width: 0; }
+#frame { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; background: #3a3a3a; display: none; }
+#drop { position: absolute; inset: 16px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; border: 2px dashed var(--line); border-radius: 12px; background: var(--drop); text-align: center; padding: 24px; }
+#drop.over { border-color: var(--accent); }
+#drop p { margin: 0; max-width: 520px; color: var(--muted); }
+#drop strong { font-size: 18px; color: var(--text); }
+aside { width: 300px; border-left: 1px solid var(--line); background: var(--panel); overflow: auto; padding: 14px 16px; display: none; }
+aside h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .6px; color: var(--muted); margin: 0 0 8px; }
+aside dl { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; margin: 0 0 16px; }
+aside dt { color: var(--muted); }
+aside dd { margin: 0; overflow-wrap: anywhere; }
+aside ul { list-style: none; margin: 0 0 16px; padding: 0; }
+aside li { padding: 6px 0; border-top: 1px solid var(--line); font-size: 13px; }
+.kind { font-weight: 600; margin-right: 4px; }
+.kind-error, .kind-missing { color: var(--err); }
+.kind-unsupported, .kind-approx { color: var(--warn); }
+kbd { font: 12px ui-monospace, monospace; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; padding: 0 4px; }
+.keys li { display: flex; justify-content: space-between; gap: 8px; }
+#status { font-size: 13px; color: var(--muted); }
+#sample { width: 130px; }
+#status.error { color: var(--err); }
+@media (max-width: 760px) {
+  main { flex-direction: column; }
+  aside { width: auto; max-height: 40vh; border-left: 0; border-top: 1px solid var(--line); }
+  .tag { display: none; }
+}
+</style>
 </head>
-
 <body>
-	
-	<div class="container">
-		
-		<div class="header">
-			<ul class="nav nav-pills pull-right">
-				<li class="active"><a href="#"><i class="glyphicon glyphicon-home"></i> Home</a></li>
-				<li><a href="https://github.com/g21589/PPTX2HTML"><i class="fa fa-github"></i> Github</a></li>
-			</ul>
-			<h2 class="text-muted">PPTX2HTML</h2>
-		</div>
-		
-		<div class="jumbotron">
-			<h1>PPTX2HTML</h1>
-			<p class="lead">Transform PPTX to HTML</p>
-		</div>
-		
-		<div class="row">
-			<div class="col-md-6 col-md-offset-3" style="text-align: center;">
-				
-				<!-- Split button -->
-				<div class="btn-group">
-				  <div class="fileUpload btn btn-success">
-					<span><i class="glyphicon glyphicon-upload"></i> Choose a PPTX file</span>
-					<input id="uploadBtn" type="file" class="upload" accept="application/vnd.openxmlformats-officedocument.presentationml.presentation"/>
-				  </div>
-				  <button type="button" class="btn btn-success dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-					<span class="caret"></span>
-					<span class="sr-only">Toggle Dropdown</span>
-				  </button>
-				  <ul class="dropdown-menu">
-					<li><a href="#" data-toggle="modal" data-target="#slideContentModel"><i class="glyphicon glyphicon-search"></i> Raw content of slides</a></li>
-					<li id="download-btn"><a href="#"><i class="glyphicon glyphicon-save-file"></i> Download html</a></li>
-					<li role="separator" class="divider"></li>
-					<li id="to-reveal-btn"><a href="#"><i class="glyphicon glyphicon-export"></i> To Reveal.js slides</a></li>
-					<li id="download-reveal-btn"><a href="#"><i class="glyphicon glyphicon-export"></i> Export to Reveal.js slides</a></li>
-				  </ul>
-				</div>
-				
-				<!-- Modal -->
-				<div class="modal fade" id="slideContentModel" tabindex="-1" role="dialog" aria-labelledby="myModalLabel">
-				  <div class="modal-dialog" role="document">
-					<div class="modal-content">
-					  <div class="modal-header">
-						<button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
-						<h4 class="modal-title" id="myModalLabel">Raw content of slides</h4>
-					  </div>
-					  <div class="modal-body">
-					    <div class="form-group">
-						  <label for="comment">Content:</label>
-						  <textarea class="form-control" rows="5" id="comment"></textarea>
-						</div>
-					  </div>
-					  <div class="modal-footer">
-						<button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
-						<button id="download-btn2" type="button" class="btn btn-primary">Download</button>
-					  </div>
-					</div>
-				  </div>
-				</div>
-				
-			</div>
-			
-		</div>
-		
-		<br>
-		
-		<div class="row">
-			<div class="col-md-6 col-md-offset-3" style="text-align: center;">
-				<img id="pptx-thumb" class="img-thumbnail" src="" alt="">
-			</div>
-		</div>
-		
-		<br>
-		
-		<div class="row">
-			<div class="col-lg-12">
-				<div class="progress">
-					<div id="load-progress" class="progress-bar progress-bar-striped" style="transition: none;" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" style="width: 0%;">
-						0%
-					</div>
-				</div>
-			</div>
-		</div>
-		
-		<div class="row">
-			<div class="col-lg-12">
-				<div id="error_block" class="alert alert-danger hidden">
-					You will need a recent browser to use this demo :(
-				</div>
-				<div id="info_block" class="alert alert-success" role="alert">
-				
-				</div>
-				<div id="result_block" class="hidden">
-					<h3>Slides:</h3>
-					<div id="result"></div>
-				</div>
-			</div>
-		</div>
-		
-		<div class="footer">
-			<hr>
-			<p>Copyright © 2015 g21589, All Rights Reserved.<br>Contact Person: g21589, E-mail: g21589@gmail.com</p>
-		</div>
-		
-	</div>
+<header>
+  <h1>PPTX<span>2</span>HTML</h1>
+  <span class="tag">PowerPoint to HTML, entirely in your browser</span>
+  <div class="actions">
+    <span id="status" role="status"></span>
+    <label class="button primary" for="file">Open .pptx</label>
+    <input id="file" type="file" accept=".pptx,.pptm,.ppsx,.ppsm,.potx,application/vnd.openxmlformats-officedocument.presentationml.presentation" hidden>
+    <select id="sample" aria-label="Open a sample">
+      <option value="">Samples…</option>
+      <option value="samples/sample.pptx">Sample deck</option>
+      <option value="samples/features/animation.pptx">Feature tour: animations &amp; transitions</option>
+      <option value="samples/features/drawing.pptx">Feature tour: shapes, fills, effects</option>
+      <option value="samples/features/text.pptx">Feature tour: text</option>
+      <option value="samples/features/objects.pptx">Feature tour: pictures, tables, charts, media</option>
+    </select>
+    <select id="mode" aria-label="View mode">
+      <option value="deck">Slide show</option>
+      <option value="list">All slides</option>
+    </select>
+    <button id="download" type="button" disabled>Download HTML</button>
+    <button id="newtab" type="button" disabled>Open in new tab</button>
+  </div>
+</header>
+<main>
+  <div id="stage">
+    <div id="drop">
+      <strong>Drop a PowerPoint file here</strong>
+      <p>Shapes, text, tables, charts, SmartArt, pictures, media, animations and slide transitions are converted to a single HTML file. Nothing is uploaded.</p>
+      <div style="display:flex;flex-wrap:wrap;justify-content:center;gap:8px"><label class="button primary" for="file">Choose a file</label><button type="button" data-sample="samples/sample.pptx">Sample deck</button><button type="button" data-sample="samples/features/animation.pptx">Animation tour</button></div>
+    </div>
+    <iframe id="frame" title="Converted presentation" allow="fullscreen; autoplay"></iframe>
+  </div>
+  <aside id="info">
+    <h2>Presentation</h2>
+    <dl id="meta"></dl>
+    <h2>Diagnostics</h2>
+    <ul id="diag"></ul>
+    <h2>Slide show keys</h2>
+    <ul class="keys">
+      <li><span>Next / previous</span><span><kbd>→</kbd> <kbd>←</kbd></span></li>
+      <li><span>First / last slide</span><span><kbd>Home</kbd> <kbd>End</kbd></span></li>
+      <li><span>Fullscreen</span><kbd>F</kbd></li>
+      <li><span>Speaker notes</span><kbd>S</kbd></li>
+      <li><span>Black / white screen</span><span><kbd>B</kbd> <kbd>W</kbd></span></li>
+    </ul>
+  </aside>
+</main>
+<script type="module">
+import { convert, version } from './src/index.js';
 
-<!-- Include all compiled plugins (below), or include individual files as needed -->
-<script type="text/javascript" src="js/bootstrap.min.js"></script>
-<script type="text/javascript" src="js/pptx2html.js"></script>
+const $ = (id) => document.getElementById(id);
+const state = { bytes: null, name: '', html: '', url: '' };
 
-<link rel="stylesheet" href="css/nv.d3.min.css">
-<script type="text/javascript" src="js/chart/d3.min.js"></script>
-<script type="text/javascript" src="js/chart/nv.d3.min.js"></script>
+function setStatus(text, error = false) {
+  $('status').textContent = text;
+  $('status').classList.toggle('error', error);
+}
 
+function render() {
+  if (!state.bytes) return;
+  const t0 = performance.now();
+  let result;
+  try {
+    result = convert(state.bytes, { mode: $('mode').value, title: state.name.replace(/\.[^.]+$/, '') || undefined });
+  } catch (e) {
+    setStatus('Could not convert ' + state.name + ': ' + e.message, true);
+    return;
+  }
+  const ms = Math.round(performance.now() - t0);
+  state.html = result.html;
+  if (state.url) URL.revokeObjectURL(state.url);
+  state.url = URL.createObjectURL(new Blob([result.html], { type: 'text/html' }));
+  const frame = $('frame');
+  frame.src = state.url;
+  frame.style.display = 'block';
+  $('drop').style.display = 'none';
+  $('info').style.display = 'block';
+  $('download').disabled = $('newtab').disabled = false;
+  frame.onload = () => frame.contentWindow.focus();
+
+  const p = result.presentation;
+  const meta = [
+    ['File', state.name],
+    ['Title', p.props && p.props.title],
+    ['Slides', p.slides.length + (p.slides.some((s) => s.hidden) ? ` (${p.slides.filter((s) => s.hidden).length} hidden)` : '')],
+    ['Size', `${Math.round(p.width)} × ${Math.round(p.height)} px`],
+    ['Animated slides', p.slides.filter((s) => s.timing).length],
+    ['Transitions', p.slides.filter((s) => s.transition).length],
+    ['Converted in', ms + ' ms'],
+    ['HTML size', (result.html.length / 1024).toFixed(0) + ' KiB'],
+  ];
+  $('meta').replaceChildren(...meta.filter(([, v]) => v !== undefined && v !== '').flatMap(([k, v]) => {
+    const dt = document.createElement('dt'); dt.textContent = k;
+    const dd = document.createElement('dd'); dd.textContent = v;
+    return [dt, dd];
+  }));
+  const items = result.diagnostics.length ? result.diagnostics.map((d) => {
+    const li = document.createElement('li');
+    const kind = document.createElement('span');
+    kind.className = 'kind kind-' + d.kind;
+    kind.textContent = d.kind;
+    li.append(kind, d.message + (d.count > 1 ? ` (×${d.count})` : ''));
+    return li;
+  }) : [Object.assign(document.createElement('li'), { textContent: 'Everything was rendered.' })];
+  $('diag').replaceChildren(...items);
+  setStatus('');
+}
+
+async function load(bytes, name) {
+  state.bytes = new Uint8Array(bytes);
+  state.name = name;
+  setStatus('Converting…');
+  // Let the status paint before the synchronous conversion.
+  await new Promise((r) => requestAnimationFrame(() => setTimeout(r, 0)));
+  render();
+}
+
+async function loadUrl(url) {
+  setStatus('Loading…');
+  try {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(res.status + ' ' + res.statusText);
+    await load(await res.arrayBuffer(), decodeURIComponent(url.split('/').pop().split('?')[0]) || 'presentation.pptx');
+  } catch (e) {
+    setStatus('Could not load ' + url + ': ' + e.message, true);
+  }
+}
+
+$('file').addEventListener('change', async (e) => {
+  const f = e.target.files[0];
+  if (f) await load(await f.arrayBuffer(), f.name);
+  e.target.value = '';
+});
+$('sample').addEventListener('change', (e) => {
+  if (e.target.value) loadUrl(e.target.value);
+  e.target.value = '';
+});
+for (const b of document.querySelectorAll('[data-sample]')) b.addEventListener('click', () => loadUrl(b.dataset.sample));
+$('mode').addEventListener('change', render);
+$('download').addEventListener('click', () => {
+  const a = document.createElement('a');
+  a.href = state.url;
+  a.download = (state.name.replace(/\.[^.]+$/, '') || 'presentation') + '.html';
+  a.click();
+});
+$('newtab').addEventListener('click', () => window.open(state.url, '_blank'));
+
+const drop = $('drop');
+for (const t of ['dragenter', 'dragover']) document.addEventListener(t, (e) => { e.preventDefault(); drop.classList.add('over'); });
+for (const t of ['dragleave', 'drop']) document.addEventListener(t, () => drop.classList.remove('over'));
+document.addEventListener('drop', async (e) => {
+  e.preventDefault();
+  const f = e.dataTransfer.files[0];
+  if (f) await load(await f.arrayBuffer(), f.name);
+});
+
+document.title = 'PPTX2HTML ' + version;
+const src = new URLSearchParams(location.search).get('src');
+if (src) loadUrl(src);
+</script>
 </body>
 </html>
