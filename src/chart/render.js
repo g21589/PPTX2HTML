@@ -330,7 +330,9 @@ class ChartRenderer {
         kind: isLine ? 'line' : 'box',
       });
     });
-    if (c.plots.some((p) => p.type === 'barChart' && p.barDir === 'bar' && /stacked/i.test(p.grouping))) entries.reverse();
+    // Horizontal bars are drawn bottom-up: a vertical legend lists them in that order.
+    const vertical = !c.legend || ['r', 'l'].includes(c.legend.pos || 'r');
+    if (vertical && c.plots.some((p) => p.type === 'barChart' && p.barDir === 'bar')) entries.reverse();
     // Trend lines get their own legend entries ("Linear (Series)").
     c.series.forEach((s, i) => {
       for (const t of s.trendlines || []) {
@@ -848,6 +850,7 @@ class ChartRenderer {
     const acc = this.stackValues(p, n);
     let s = '';
     const labels = [];
+    const ends = [];
     series.forEach((ser, sIdx) => {
       const si = this.seriesIndex(ser);
       const vals = ser.val ? ser.val.values : [];
@@ -876,8 +879,10 @@ class ChartRenderer {
         if (gi.vertical) { rx = startOff; rw = bw; ry = Math.min(p0, p1); rh = Math.abs(p1 - p0); } else { ry = startOff; rh = bw; rx = Math.min(p0, p1); rw = Math.abs(p1 - p0); }
         s += this.barShape(rx, ry, rw, rh, fill, line, ser, p);
         labels.push({ ser, si, i, v: vals[i], rect: { x: rx, y: ry, w: rw, h: rh }, neg: v < 0, plot: p });
+        (ends[sIdx] = ends[sIdx] || []).push({ i, at: gi.vertical ? rx + rw / 2 : ry + rh / 2, v: v1 });
       }
     });
+    series.forEach((ser, sIdx) => { s += this.errorBars(ser, gi, area, ends[sIdx] || [], 'cat'); });
     return `<g class="pp-chart-bars">${s}${this.barLabels(labels, gi, cats)}</g>`;
   }
 
@@ -1014,6 +1019,7 @@ class ChartRenderer {
         }
       }
       s += this.trendlines(ser, si, gi, area, pts);
+      s += this.errorBars(ser, gi, area, pts.filter(Boolean).map((q) => ({ i: q[3], at: gi.vertical ? q[0] : q[1], v: acc ? this.valFromPos(gi, gi.vertical ? q[1] : q[0], area) : q[2] })), 'cat');
     }
     // Drop lines / high-low lines / up-down bars for line charts.
     if (p.hiLowLines) s += this.hiLow(all, p.hiLowLines, gi);
@@ -1135,6 +1141,7 @@ class ChartRenderer {
         }
       }
       s += this.trendlines(ser, si, gi, area, pts, true);
+      s += this.errorBars(ser, gi, area, pts.filter(Boolean).map((q) => ({ i: q[3], x: q[0], y: q[1], v: q[2], xv: q[4] })), 'xy');
     }
     return `<g class="pp-chart-scatter">${s}</g>`;
   }
@@ -1177,6 +1184,70 @@ class ChartRenderer {
       if (ser.marker) for (const pt of all[k]) if (pt) s += this.markerSvg(m, pt[0], pt[1]);
     });
     return `<g class="pp-chart-stock">${s}</g>`;
+  }
+
+  /** Value at a pixel position on the value axis (inverse of valPos). */
+  valFromPos(gi, px, area) {
+    const a = this.valPos(gi, 0, area), b = this.valPos(gi, 1, area);
+    return b === a ? 0 : (px - a) / (b - a);
+  }
+
+  /**
+   * Error bars of a series. pts: [{i, at, v}] for category charts (at = the
+   * category position in px) or [{i, x, y, v, xv}] for scatter charts.
+   */
+  errorBars(ser, gi, area, pts, kind) {
+    if (!ser.errBars || !ser.errBars.length || !pts.length) return '';
+    let s = '';
+    for (const eb of ser.errBars) {
+      const xDir = kind === 'xy' && eb.dir === 'x';
+      const values = pts.map((q) => (xDir ? q.xv : q.v));
+      const n = values.length;
+      const mean = values.reduce((a, b) => a + b, 0) / (n || 1);
+      const sd = n > 1 ? Math.sqrt(values.reduce((a, b) => a + (b - mean) ** 2, 0) / (n - 1)) : 0;
+      const line = finalizeLine({ fill: { type: 'solid', color: { r: 0, g: 0, b: 0, a: 1 } }, w: 0.75, ...(eb.line || {}) });
+      const attr = this.strokeAttr(line);
+      const cap = 4;
+      pts.forEach((q, k) => {
+        let base = values[k], plus = 0, minus = 0;
+        switch (eb.valType) {
+          case 'percentage': plus = minus = (Math.abs(base) * eb.val) / 100; break;
+          case 'stdDev': base = mean; plus = minus = eb.val * sd; break;
+          case 'stdErr': plus = minus = n ? sd / Math.sqrt(n) : 0; break;
+          case 'cust': {
+            const pv = eb.plus && eb.plus.values[q.i], mv = eb.minus && eb.minus.values[q.i];
+            plus = Number.isFinite(pv) ? pv : 0; minus = Number.isFinite(mv) ? mv : 0;
+            break;
+          }
+          default: plus = minus = eb.val;
+        }
+        const hi = eb.type === 'minus' ? base : base + plus;
+        const lo = eb.type === 'plus' ? base : base - minus;
+        // Bars run along the value axis (or the x axis for x error bars).
+        let p0, p1, across, vertical;
+        if (kind === 'xy') {
+          vertical = !xDir;
+          across = vertical ? q.x : q.y;
+          p0 = vertical ? this.valPos(gi, lo, area) : this.xPos(gi, lo, area);
+          p1 = vertical ? this.valPos(gi, hi, area) : this.xPos(gi, hi, area);
+        } else {
+          vertical = gi.vertical;
+          across = q.at;
+          p0 = this.valPos(gi, lo, area);
+          p1 = this.valPos(gi, hi, area);
+        }
+        if (![p0, p1, across].every(Number.isFinite)) return;
+        const seg = (a, b, c, d) => `M${r2(a)} ${r2(b)}L${r2(c)} ${r2(d)}`;
+        let d = vertical ? seg(across, p0, across, p1) : seg(p0, across, p1, across);
+        if (!eb.noEndCap) {
+          for (const [pp, show] of [[p0, eb.type !== 'plus'], [p1, eb.type !== 'minus']]) {
+            if (show) d += vertical ? seg(across - cap, pp, across + cap, pp) : seg(pp, across - cap, pp, across + cap);
+          }
+        }
+        s += `<path d="${d}" fill="none" ${attr}/>`;
+      });
+    }
+    return `<g class="pp-chart-err">${s}</g>`;
   }
 
   trendlines(ser, si, gi, area, pts, xy) {

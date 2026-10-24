@@ -190,10 +190,10 @@ export function build(deck) {
   {
     const cats = ['Q1', 'Q2', 'Q3', 'Q4'];
     const charts = [
-      ['Clustered column', `<c:barChart><c:barDir val="col"/><c:grouping val="clustered"/><c:varyColors val="0"/>${series(0, 'North', cats, [4.3, 2.5, 3.5, 4.5])}${series(1, 'South', cats, [2.4, 4.4, 1.8, 2.8])}<c:gapWidth val="150"/><c:axId val="1"/><c:axId val="2"/></c:barChart>${axes()}`],
+      ['Clustered column', `<c:barChart><c:barDir val="col"/><c:grouping val="clustered"/><c:varyColors val="0"/>${series(0, 'North', cats, [4.3, 2.5, 3.5, 4.5], '<c:errBars><c:errBarType val="both"/><c:errValType val="fixedVal"/><c:noEndCap val="0"/><c:val val="0.5"/></c:errBars>')}${series(1, 'South', cats, [2.4, 4.4, 1.8, 2.8])}<c:gapWidth val="150"/><c:axId val="1"/><c:axId val="2"/></c:barChart>${axes()}`],
       ['Stacked bar (horizontal)', `<c:barChart><c:barDir val="bar"/><c:grouping val="stacked"/><c:varyColors val="0"/>${series(0, 'A', cats, [4, 3, 2, 5])}${series(1, 'B', cats, [1, 2, 3, 1])}<c:gapWidth val="80"/><c:overlap val="100"/><c:axId val="1"/><c:axId val="2"/></c:barChart>${axes('l', 'b')}`],
       ['100% stacked column', `<c:barChart><c:barDir val="col"/><c:grouping val="percentStacked"/><c:varyColors val="0"/>${series(0, 'A', cats, [4, 3, 2, 5])}${series(1, 'B', cats, [1, 2, 3, 1])}<c:overlap val="100"/><c:axId val="1"/><c:axId val="2"/></c:barChart>${axes('b', 'l', { fmt: '0%' })}`],
-      ['Line with markers', `<c:lineChart><c:grouping val="standard"/><c:varyColors val="0"/>${series(0, 'Sales', cats, [10, 14, 9, 17], '<c:marker><c:symbol val="circle"/><c:size val="7"/></c:marker>')}${series(1, 'Cost', cats, [7, 8, 11, 9], '<c:marker><c:symbol val="square"/><c:size val="6"/></c:marker><c:smooth val="1"/>')}<c:marker val="1"/><c:axId val="1"/><c:axId val="2"/></c:lineChart>${axes()}`],
+      ['Line with markers', `<c:lineChart><c:grouping val="standard"/><c:varyColors val="0"/>${series(0, 'Sales', cats, [10, 14, 9, 17], '<c:marker><c:symbol val="circle"/><c:size val="7"/></c:marker><c:errBars><c:errDir val="y"/><c:errBarType val="plus"/><c:errValType val="percentage"/><c:noEndCap val="0"/><c:val val="20"/><c:spPr><a:ln w="12700"><a:solidFill><a:srgbClr val="C00000"/></a:solidFill></a:ln></c:spPr></c:errBars>')}${series(1, 'Cost', cats, [7, 8, 11, 9], '<c:marker><c:symbol val="square"/><c:size val="6"/></c:marker><c:smooth val="1"/>')}<c:marker val="1"/><c:axId val="1"/><c:axId val="2"/></c:lineChart>${axes()}`],
       ['Area', `<c:areaChart><c:grouping val="stacked"/><c:varyColors val="0"/>${series(0, 'A', cats, [3, 4, 2, 5])}${series(1, 'B', cats, [2, 1, 3, 2])}<c:axId val="1"/><c:axId val="2"/></c:areaChart>${axes()}`],
       ['Pie with labels', `<c:pieChart><c:varyColors val="1"/>${series(0, 'Share', ['Alpha', 'Beta', 'Gamma', 'Delta'], [45, 25, 20, 10], '<c:dPt><c:idx val="0"/><c:bubble3D val="0"/><c:explosion val="12"/></c:dPt><c:dLbls><c:numFmt formatCode="0%" sourceLinked="0"/><c:showLegendKey val="0"/><c:showVal val="0"/><c:showCatName val="0"/><c:showSerName val="0"/><c:showPercent val="1"/><c:showBubbleSize val="0"/></c:dLbls>')}<c:firstSliceAng val="0"/></c:pieChart>`],
       ['Doughnut', `<c:doughnutChart><c:varyColors val="1"/>${series(0, 'D', cats, [1, 2, 3, 4])}<c:firstSliceAng val="0"/><c:holeSize val="55"/></c:doughnutChart>`],
@@ -214,7 +214,8 @@ export function build(deck) {
       });
       out.push({
         slide: s.index, feature: 'chart/' + (k / 6 + 1), compareLO: true,
-        checks: [{ kind: 'dom', selector: '.pp-chart svg', min: sub.length }, { kind: 'text', contains: sub[0][0] }, { kind: 'model', desc: 'chart series parsed', fn: (sl) => sl.elements.filter((e) => e.kind === 'chart' && e.chart.series.length).length === sub.length }],
+        checks: [{ kind: 'dom', selector: '.pp-chart svg', min: sub.length }, { kind: 'text', contains: sub[0][0] }, { kind: 'model', desc: 'chart series parsed', fn: (sl) => sl.elements.filter((e) => e.kind === 'chart' && e.chart.series.length).length === sub.length },
+          ...(k === 0 ? [{ kind: 'dom', selector: '.pp-chart-err path', min: 8 }] : [])],
       });
     }
   }

@@ -159,7 +159,7 @@ change, alpha, SVG blips, EMF/WMF converted to SVG, TIFF converted to PNG),
 tables (table styles,
 banding, merged cells, cell borders and fills), charts (bar, column, line,
 area, pie, doughnut, scatter, bubble, radar, stock, combo, secondary axes,
-trend lines, data labels, number formats; 3D charts drawn in 2D),
+trend lines, error bars, data labels, number formats; 3D charts drawn in 2D),
 SmartArt (pre-rendered drawing), audio and video with bookmarks and
 trimming, OLE objects and ActiveX controls (preview picture, including
 legacy VML previews), slide backgrounds, shapes filled with the background.
