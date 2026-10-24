@@ -287,8 +287,10 @@ export function build(deck) {
       const arch = tx[0].querySelectorAll('.pp-wg');
       if (arch.length !== 7) return arch.length + ' glyphs in the arch';
       const rot = (g) => { const m = new DOMMatrix(getComputedStyle(g).transform); return Math.atan2(m.b, m.a) * 180 / Math.PI; };
-      const r0 = rot(arch[0]), r6 = rot(arch[6]);
-      if (!(r0 < -8 && r6 > 8)) return `arch rotations ${r0.toFixed(1)} / ${r6.toFixed(1)}`;
+      // Glyphs turn steadily along the arch (font metrics only shift the range).
+      const rs = [...arch].map(rot);
+      const rising = rs.every((r, i) => !i || r > rs[i - 1] - 0.01);
+      if (!rising || rs[6] - rs[0] < 8) return `arch rotations ${rs.map((r) => r.toFixed(1)).join(' ')}`;
       const plain = tx[15].getBoundingClientRect(), glyphs = [...tx[15].querySelectorAll('.pp-wg')].map((g) => g.getBoundingClientRect());
       const left = Math.min(...glyphs.map((r) => r.left)), right = Math.max(...glyphs.map((r) => r.right));
       const bottom = Math.max(...glyphs.map((r) => r.bottom)), top = Math.min(...glyphs.map((r) => r.top));
