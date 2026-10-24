@@ -1,11 +1,12 @@
 /**
  * Embedded fonts (p:embeddedFontLst) to @font-face rules.
  *
- * PowerPoint stores embedded fonts as Embedded OpenType (EOT) data. EOT
- * files that are neither MTX-compressed nor XOR-obfuscated simply wrap a
- * TrueType font, which is extracted here. Obfuscated data is de-obfuscated.
+ * PowerPoint stores embedded fonts as Embedded OpenType (EOT) data: a
+ * TrueType font, optionally XOR-obfuscated and/or MicroType Express
+ * compressed. The TrueType font is recovered here.
  */
 import { toBase64 } from '../util/base64.js';
+import { decodeMtx } from '../util/mtx.js';
 
 function readEot(bytes) {
   if (bytes.length < 82) return null;
@@ -17,12 +18,18 @@ function readEot(bytes) {
   const magic = v.getUint16(34, true);
   if (magic !== 0x504c || eotSize > bytes.length + 16) return null;
   if (version !== 0x00010000 && version !== 0x00020001 && version !== 0x00020002) return null;
-  if (flags & 0x4) return { compressed: true };
   const data = bytes.subarray(eotSize - fontDataSize, eotSize);
   let out = data;
   if (flags & 0x10000000) {
     out = new Uint8Array(data);
     for (let i = 0; i < out.length; i++) out[i] ^= 0x50;
+  }
+  if (flags & 0x4) {
+    try {
+      out = decodeMtx(out);
+    } catch (e) {
+      return { error: e.message };
+    }
   }
   return { font: out };
 }
@@ -54,7 +61,7 @@ export function fontFaceCss(pres, rc) {
           font = eot.font;
           mime = sniffFont(font) || 'font/ttf';
         } else {
-          pres.diagnostics.add('approx', 'embedded font ' + f.typeface + ' uses compressed EOT data');
+          pres.diagnostics.add('approx', 'embedded font ' + f.typeface + ' could not be read' + (eot && eot.error ? ': ' + eot.error : ''));
         }
       }
       if (!font) continue;

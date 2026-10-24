@@ -231,6 +231,8 @@ class Builder {
     const p = this.dm.pres.get(ln.data.pt.id + '|' + ln.name);
     const lv = p && p.prSet && p.prSet.child('dgm:presLayoutVars');
     if (lv) this.vars(lv, ln);
+    // A shape resized by the user (fractions of 100000).
+    if (p && (p.pr.custScaleX || p.pr.custScaleY)) ln.custScale = [Number(p.pr.custScaleX || 100000) / 100000, Number(p.pr.custScaleY || 100000) / 100000];
   }
 
   test(cond, ln) {
@@ -269,6 +271,8 @@ class Builder {
           type: k.attrs.type, for: k.attr('for', 'self'), forName: k.attrs.forName || '', ptType: k.attrs.ptType || '',
           refType: k.attr('refType', 'none'), refFor: k.attr('refFor', 'self'), refForName: k.attrs.refForName || '', refPtType: k.attrs.refPtType || '',
           op: k.attr('op', 'none'), fact: k.num('fact', 1), val: k.num('val', 0),
+          // op="equ" without a value or reference only asks for equal values.
+          equal: k.attrs.op === 'equ' && k.attrs.val === undefined && !k.attrs.refType,
         }))); break;
         case 'ruleLst': ln.rules.push(...c.all('dgm:rule').map((r) => r.attrs)); break;
         case 'choose': {
@@ -362,6 +366,7 @@ function cval(ln, type, seen = new Set()) {
   seen.add(key);
   let eq, lo = -Infinity, hi = Infinity;
   for (const [c, owner] of constraintsFor(ln, type)) {
+    if (c.equal) continue;
     const v = evalConstr(c, owner, ln, seen);
     if (v === undefined || !Number.isFinite(v)) continue;
     if (c.op === 'lte') hi = Math.min(hi, v);
@@ -675,6 +680,9 @@ function hierNat(ln) {
   } else {
     const w = cval(ln, 'w'), h = cval(ln, 'h');
     nat = { w: Number.isFinite(w) && w > 0 ? w : 100, h: Number.isFinite(h) && h > 0 ? h : 60 };
+    // User-resized node shapes take their size in the hierarchy.
+    const cs = [ln, ...ln.children].find((k) => k.custScale);
+    if (cs) nat = { w: nat.w * cs.custScale[0], h: nat.h * cs.custScale[1] };
   }
   ln.nat = nat;
   return nat;
@@ -825,6 +833,16 @@ function findLbl(root, name) {
 }
 
 /** Text lines (paragraph nodes with a level) shown by a layout node. */
+const FILLS = new Set(['noFill', 'solidFill', 'gradFill', 'blipFill', 'pattFill', 'grpFill']);
+
+/** Add a shape property, replacing one of the same kind. */
+function setProp(kids, c) {
+  const same = (k) => k.local === c.local || (FILLS.has(k.local) && FILLS.has(c.local));
+  const i = kids.findIndex(same);
+  if (i >= 0) kids[i] = c;
+  else kids.push(c);
+}
+
 function textOf(ln) {
   // Only the text algorithm displays text; other nodes use presOf for styling.
   if (!ln.presOf || !ln.data || ln.alg.type !== 'tx') return [];
@@ -992,10 +1010,14 @@ export function layoutDiagram(parts, w, h, ctx) {
         node('a:pathLst', {}, [node('a:path', { w: String(w), h: String(hh), fill: 'none' }, [node('a:moveTo', {}, [pt(ln.connPath[0])]), ...ln.connPath.slice(1).map((q) => node('a:lnTo', {}, [pt(q)]))])])]));
       spKids.push(node('a:noFill'));
     } else spKids.push(node('a:prstGeom', { prst }, [node('a:avLst', {}, ln.shape ? adjNodes(prst, ln.shape.adj) : [])]));
-    if (!s.type || ln.shape.hideGeom) spKids.push(node('a:noFill'), node('a:ln', {}, [node('a:noFill')]));
-    // Formatting set by the user on the presentation point.
-    const custom = st.pres && st.pres.spPr;
-    if (custom) for (const c of custom.children) if (c.local !== 'xfrm' && !/Geom$/.test(c.local)) spKids.push(clone(c));
+    const hidden = !s.type || ln.shape.hideGeom;
+    if (hidden) spKids.push(node('a:noFill'), node('a:ln', {}, [node('a:noFill')]));
+    // Formatting set by the user: on the data point (for the shape showing
+    // it), then on the presentation point.
+    const own = !hidden && ln.presOf && ln.data && ln.data.pt && select(ln.data, ln.presOf).includes(ln.data) ? ln.data.pt.spPr : null;
+    for (const custom of [own, st.pres && st.pres.spPr]) {
+      if (custom) for (const c of custom.children) if (c.local !== 'xfrm' && !/Geom$/.test(c.local)) setProp(spKids, clone(c));
+    }
     const spPr = node('dsp:spPr', {}, spKids);
 
     let txBody = null;

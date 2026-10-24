@@ -189,6 +189,36 @@ export function build(deck) {
       const avail = tx.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
       return (k > 0.4 && k < 1 && p.offsetHeight <= avail + 1) || `scale ${k}, text ${p.offsetHeight} / ${avail}`;
     };
+    // Office's stored fit is kept even though the text (empty line, text,
+    // empty line) overflows: PowerPoint shows it that way too.
+    box(s, { name: 'stored fit', x: 40, y: 590, w: 300, h: 50, bodyPr: '<a:bodyPr anchor="ctr"><a:normAutofit fontScale="90000"/></a:bodyPr>', text: [{ runs: [{ t: '', rPr: 'sz="2400"' }, { br: true, rPr: 'sz="2400"' }, { t: 'Stored fit', rPr: 'sz="2400"' }, { br: true, rPr: 'sz="2400"' }], endRPr: 'sz="2400"' }] });
+    // Empty paragraphs after the text do not count as overflow.
+    box(s, { name: 'trailing', x: 360, y: 580, w: 300, h: 60, bodyPr: '<a:bodyPr anchor="t"><a:normAutofit/></a:bodyPr>', text: [{ runs: [{ t: 'Fits above empty paragraphs', rPr: 'sz="1800"' }] }, { runs: [] }, { runs: [] }, { runs: [] }] });
+    // A word too long for the line breaks inside, next to its bullet.
+    box(s, { name: 'long word', x: 680, y: 580, w: 300, h: 100, bodyPr: '<a:bodyPr anchor="t"/>', text: [{ pPr: 'marL="228600" indent="-228600"', pInner: '<a:buFont typeface="Arial"/><a:buChar char="•"/>', runs: [{ t: 'W'.repeat(40), rPr: 'sz="1800"' }] }] });
+    const storedFitCheck = (sec) => {
+      const tx = [...sec.querySelectorAll('.pp-tx')].find((e) => e.textContent.includes('Stored fit'));
+      if (!tx) return 'box not found';
+      const fs = tx.style.getPropertyValue('--pp-fs');
+      const h = tx.querySelector('.pp-p').offsetHeight;
+      // Three lines of 24pt * 90% at 1.2 line pitch: 3 * 34.56px.
+      return (!fs && Math.abs(h - 103.7) < 3) || `scale ${fs || 1}, height ${h}`;
+    };
+    const trailingCheck = (sec) => {
+      const tx = [...sec.querySelectorAll('.pp-tx')].find((e) => e.textContent.includes('Fits above empty'));
+      return (tx && !tx.style.getPropertyValue('--pp-fs')) || 'shrunk to ' + (tx && tx.style.getPropertyValue('--pp-fs'));
+    };
+    const glueCheck = (sec) => {
+      const tx = [...sec.querySelectorAll('.pp-tx')].find((e) => e.textContent.includes('WWWW'));
+      if (!tx) return 'box not found';
+      const bu = tx.querySelector('.pp-bu').getBoundingClientRect();
+      const r = document.createRange();
+      const node = [...tx.querySelectorAll('span')].find((e) => e.textContent.startsWith('WWW') && !e.querySelector('span')).firstChild;
+      r.setStart(node, 0);
+      r.setEnd(node, 1);
+      const first = r.getBoundingClientRect();
+      return Math.abs(first.bottom - bu.bottom) < 3 || `bullet at ${bu.bottom.toFixed(1)}, text at ${first.bottom.toFixed(1)}`;
+    };
     const pitchCheck = (sec) => {
       const pitch = (prefix) => {
         const span = [...sec.querySelectorAll('.pp-p > span')].find((e) => e.textContent.startsWith(prefix));
@@ -211,7 +241,7 @@ export function build(deck) {
       const exp = [144, 288, 480];
       return got.every((v, i) => Math.abs(v - exp[i]) <= 2) || 'stops at ' + got.map((v) => v.toFixed(1)).join(', ');
     };
-    out.push({ slide: s.index, feature: 'text/spacing', compareLO: true, checks: [{ kind: 'dom', selector: '.pp-p[style*="margin-bottom:32px"]', min: 1 }, { kind: 'dom', selector: '.pp-p br', min: 1 }, { kind: 'eval', desc: 'line pitch: exact 30pt = 40px, double 14pt = 44.8px', fn: pitchCheck }, { kind: 'eval', desc: 'left / centre / right tab stops', fn: tabCheck }, { kind: 'eval', desc: 'over-full auto-fit text shrinks into its box', fn: fitCheck }] });
+    out.push({ slide: s.index, feature: 'text/spacing', compareLO: true, checks: [{ kind: 'dom', selector: '.pp-p[style*="margin-bottom:32px"]', min: 1 }, { kind: 'dom', selector: '.pp-p br', min: 1 }, { kind: 'eval', desc: 'line pitch: exact 30pt = 40px, double 14pt = 44.8px', fn: pitchCheck }, { kind: 'eval', desc: 'left / centre / right tab stops', fn: tabCheck }, { kind: 'eval', desc: 'over-full auto-fit text shrinks into its box', fn: fitCheck }, { kind: 'eval', desc: 'stored fontScale kept for genuinely overflowing text; break-only lines keep their height', fn: storedFitCheck }, { kind: 'eval', desc: 'trailing empty paragraphs do not trigger auto-fit', fn: trailingCheck }, { kind: 'eval', desc: 'long word breaks next to its bullet', fn: glueCheck }] });
   }
 
   // --- Vertical text, rotation ------------------------------------------------------

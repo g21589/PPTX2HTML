@@ -67,6 +67,27 @@ export class ZipArchive {
       }
       throw new Error('Not a ZIP file (end of central directory not found)');
     }
+    try {
+      this._readCentral(eocd);
+    } catch (e) {
+      // Damaged central directory: entries read so far, plus local headers.
+      if (!(d[0] === 0x50 && d[1] === 0x4b && d[2] === 0x03 && d[3] === 0x04)) throw new Error('Not a ZIP file (damaged central directory)');
+      const found = new Map(this.entries);
+      this.entries.clear();
+      this.lower.clear();
+      this._recoverLocalHeaders();
+      for (const [name, entry] of found) {
+        this.entries.set(name, entry);
+        this.lower.set(name.toLowerCase(), entry);
+      }
+      if (!this.entries.size) throw new Error('Not a ZIP file (damaged central directory)');
+    }
+  }
+
+  _readCentral(eocd) {
+    const d = this.data;
+    const v = this.view;
+    const n = d.length;
     let count = v.getUint16(eocd + 10, true);
     let cdSize = v.getUint32(eocd + 12, true);
     let cdOff = v.getUint32(eocd + 16, true);

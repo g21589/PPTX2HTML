@@ -132,16 +132,19 @@ export function layoutWarps(root) {
     const marker = document.createElement('span');
     marker.style.cssText = 'display:inline-block;width:0;height:0;vertical-align:baseline';
     const lines = [];
-    let cur = null, lastX = Infinity, lastPara = null;
+    let cur = null, lastY = -Infinity, lastH = 0, lastPara = null;
     for (const g of glyphs) {
       const [x, y] = rel(g);
       const para = g.closest('.pp-p');
       g.appendChild(marker);
       const m = { g, x, y, w: g.offsetWidth, h: g.offsetHeight, base: rel(marker)[1] - y, size: parseFloat(getComputedStyle(g).fontSize) || 16, text: g.textContent, space: SPACE.test(g.textContent) };
       marker.remove();
-      if (!cur || para !== lastPara || x < lastX - 0.5) { cur = []; lines.push(cur); }
+      // A wrapped line starts at least half a glyph lower (offsets are whole
+      // pixels, so horizontal positions are too coarse to tell).
+      if (!cur || para !== lastPara || y >= lastY + lastH / 2) { cur = []; lines.push(cur); }
       cur.push(m);
-      lastX = x + m.w;
+      lastY = y;
+      lastH = m.h;
       lastPara = para;
     }
     const metrics = [];
@@ -247,10 +250,36 @@ function contentHeight(tx) {
   return last.offsetTop + last.offsetHeight + parseFloat(ce.marginBottom) - (first.offsetTop - parseFloat(cs.marginTop));
 }
 
+const visible = (n) => {
+  if (n.nodeType === 3) return /[^\s\u200b]/.test(n.nodeValue);
+  if (n.nodeType !== 1 || n.classList.contains('pp-bu') || n.classList.contains('pp-bu-gap')) return false;
+  return [...n.childNodes].some(visible);
+};
+
+/**
+ * Hide what follows the last visible text (empty paragraphs, trailing line
+ * breaks): it takes space but does not show, so it does not count as
+ * overflow. Returns a function restoring it.
+ */
+function hideTrailing(tx) {
+  const hidden = [];
+  const hide = (el) => { hidden.push([el, el.style.display]); el.style.display = 'none'; };
+  const ps = [...tx.querySelectorAll(':scope > .pp-p, :scope > div > .pp-p')];
+  let k = ps.length - 1;
+  while (k > 0 && !visible(ps[k])) hide(ps[k--]);
+  const kids = ps[k] ? [...ps[k].childNodes] : [];
+  for (let i = kids.length - 1; i >= 0 && !visible(kids[i]); i--) {
+    if (kids[i].nodeType === 1 && !kids[i].classList.contains('pp-tab-end')) hide(kids[i]);
+  }
+  return () => { for (const [el, d] of hidden) el.style.display = d; };
+}
+
 /**
  * Auto-fitting text bodies (normAutofit / spAutoFit) were fitted by Office
  * with the original fonts; substituted fonts can be larger. Shrink the text
- * (through --pp-fs) until it fits its box again.
+ * (through --pp-fs) until it fits its box again. Where Office stored its own
+ * fit (data-fit-min), only a small correction is made: needing more means
+ * the text overflows in Office too.
  */
 export function layoutFit(root) {
   for (const tx of root.querySelectorAll('.pp-tx[data-fit]')) {
@@ -261,14 +290,25 @@ export function layoutFit(root) {
     const nowrap = tx.classList.contains('pp-nowrap');
     const availW = tx.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
     const over = () => contentHeight(tx) > avail + 1 || (nowrap && tx.scrollWidth > tx.clientWidth + 1 && availW > 0);
-    if (avail <= 0 || !over()) continue;
-    let lo = 0.4, hi = 1;
-    for (let i = 0; i < 7; i++) {
-      const mid = (lo + hi) / 2;
-      tx.style.setProperty('--pp-fs', String(mid));
-      if (over()) hi = mid; else lo = mid;
+    if (avail <= 0) continue;
+    const restore = hideTrailing(tx);
+    const min = parseFloat(tx.dataset.fitMin) || 0.4;
+    let fs = 1;
+    if (over()) {
+      tx.style.setProperty('--pp-fs', String(min));
+      if (!over() || min <= 0.4) {
+        let lo = min, hi = 1;
+        for (let i = 0; i < 7; i++) {
+          const mid = (lo + hi) / 2;
+          tx.style.setProperty('--pp-fs', String(mid));
+          if (over()) hi = mid; else lo = mid;
+        }
+        fs = Math.round(lo * 1000) / 1000;
+      }
     }
-    tx.style.setProperty('--pp-fs', String(Math.round(lo * 1000) / 1000));
+    restore();
+    if (fs < 1) tx.style.setProperty('--pp-fs', String(fs));
+    else tx.style.removeProperty('--pp-fs');
   }
 }
 
