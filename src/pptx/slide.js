@@ -15,6 +15,7 @@ import { parseTable } from './table.js';
 import { parseChartPart } from '../chart/parse.js';
 import { parseTiming } from './timing.js';
 import { parseTransition } from './transition.js';
+import { layoutDiagram } from '../smartart/engine.js';
 
 const SUPPORTED_MC = new Set(['p14', 'p15', 'p159', 'p1510', 'p1710', 'a14', 'a15', 'a16', 'a1611', 'asvg', 'adec', 'c14', 'c15', 'c16', 'c16r3', 'p188', 'thm15', 'v', 'o', 'cx', 'aink', 'am3d', 'pc', 'ac']);
 
@@ -554,7 +555,14 @@ export class SlideBuilder {
       if (txXfrm && el.text) {
         const t = parseXfrm(txXfrm);
         const m = (o.map || ((v) => v))({ x: t.x, y: t.y, cx: t.cx, cy: t.cy });
-        el.textBox = { x: emu2px(m.x) - el.x, y: emu2px(m.y) - el.y, w: emu2px(m.cx), h: emu2px(m.cy), rot: t.rot };
+        // Text box centre in the shape's own (unrotated) frame.
+        const w = emu2px(m.cx), h = emu2px(m.cy);
+        const dx = emu2px(m.x) + w / 2 - (el.x + el.w / 2), dy = emu2px(m.y) + h / 2 - (el.y + el.h / 2);
+        const a = (-(el.rot || 0) * Math.PI) / 180;
+        let lx = dx * Math.cos(a) - dy * Math.sin(a), ly = dx * Math.sin(a) + dy * Math.cos(a);
+        if (el.flipH) lx = -lx;
+        if (el.flipV) ly = -ly;
+        el.textBox = { x: el.w / 2 + lx - w / 2, y: el.h / 2 + ly - h / 2, w, h, rot: t.rot || 0 };
       }
       if (el.text && !hasVisibleText(el.text) && el.ph && el.fill.type === 'none' && !el.line) {
         // Empty placeholder: nothing is shown in slide show.
@@ -833,14 +841,33 @@ export class SlideBuilder {
       if (all.length === 1) drawingPart = all[0].partName;
     }
     const drawing = drawingPart && this.doc.pkg.xml(drawingPart);
-    const tree = drawing && drawing.first('dsp:spTree');
-    if (!tree) {
-      ctx.note('approx', 'SmartArt without pre-rendered drawing (text only)');
-      return this.diagramTextFallback(dataRel, ctx, el);
+    let tree = drawing && drawing.first('dsp:spTree');
+    let dctx = ctx.with({ part: drawingPart });
+    if (!tree || !tree.children.some((c) => c.local === 'sp' || c.local === 'grpSp') || this.doc.options.smartArtEngine) {
+      // No pre-rendered drawing (PowerPoint 2007, other producers): lay out
+      // the diagram from its layout definition.
+      const part = (id) => {
+        const r = id && ctx.rel(id);
+        return r && !r.external ? this.doc.pkg.xml(r.partName) : null;
+      };
+      try {
+        tree = layoutDiagram({
+          data: part(relIds.attrs['r:dm']), layout: part(relIds.attrs['r:lo']),
+          style: part(relIds.attrs['r:qs']), colors: part(relIds.attrs['r:cs']),
+        }, el.w, el.h, ctx);
+      } catch (e) {
+        ctx.note('error', 'SmartArt layout: ' + e.message);
+        tree = null;
+      }
+      if (!tree || !tree.children.some((c) => c.local === 'sp')) {
+        ctx.note('approx', 'SmartArt without pre-rendered drawing (text only)');
+        return this.diagramTextFallback(dataRel, ctx, el);
+      }
+      ctx.note('approx', 'SmartArt laid out from its layout definition');
+      dctx = ctx.with({ part: dataRel ? dataRel.partName : ctx.part });
     }
     el.kind = 'group';
     el.smartArt = true;
-    const dctx = ctx.with({ part: drawingPart });
     el.children = this.tree(tree, dctx, { ...o, map: (r) => r, layer: o.layer });
     return el;
   }

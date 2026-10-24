@@ -160,7 +160,10 @@ tables (table styles,
 banding, merged cells, cell borders and fills), charts (bar, column, line,
 area, pie, doughnut, scatter, bubble, radar, stock, combo, secondary axes,
 trend lines, error bars, data labels, number formats; 3D charts drawn in 2D),
-SmartArt (pre-rendered drawing), audio and video with bookmarks and
+SmartArt (PowerPoint's pre-rendered drawing, or — for PowerPoint 2007 and
+other producers' files without one — laid out by a layout-definition
+engine: forEach/choose/constraints, linear, snake, cycle, pyramid, org chart
+and composite algorithms, colour and style labels), audio and video with bookmarks and
 trimming, OLE objects and ActiveX controls (preview picture, including
 legacy VML previews), slide backgrounds, shapes filled with the background.
 
@@ -206,6 +209,10 @@ npm run verify         # … plus LibreOffice reference renders and similarity s
    installed) and scores the visual similarity of every slide.
 4. Writes `verify-report/index.html` (side-by-side screenshots, check
    results) and `verify-report/summary.json`; exits with 1 when a check fails.
+
+`tools/smartart-oracle.mjs` checks the SmartArt layout engine against
+PowerPoint itself: it renders diagrams from decks that contain PowerPoint's
+pre-rendered drawing both ways and scores the difference.
 
 Options: `--no-lo`, `--only <feature>`, `--out <dir>`, and
 `--corpus <dir>` (repeatable) to also convert and compare a folder of real

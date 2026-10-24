@@ -67,7 +67,8 @@ function shapeHtml(el, rc) {
       flipH: el.flipH, flipV: el.flipV, rot: el.rot,
       shapeEffects: noVisual ? el.effects : null,
     });
-    if (el.textBox && el.textBox.rot) tb = `<div class="pp-txrot" style="position:absolute;left:0;top:0;width:100%;height:100%;transform-origin:${r2(box.x + box.w / 2)}px ${r2(box.y + box.h / 2)}px;transform:rotate(${r2(el.textBox.rot - (el.rot || 0))}deg)">${tb}</div>`;
+    // txXfrm rotation is relative to the shape's own rotation.
+    if (el.textBox && el.textBox.rot) tb = `<div class="pp-txrot" style="position:absolute;left:0;top:0;width:100%;height:100%;transform-origin:${r2(box.x + box.w / 2)}px ${r2(box.y + box.h / 2)}px;transform:rotate(${r2(el.textBox.rot)}deg)">${tb}</div>`;
     text = tb;
   }
   if (!geo && !text) return '';
