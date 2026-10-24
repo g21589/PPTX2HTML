@@ -147,18 +147,22 @@ extrusion approximations, rotation and flipping.
 **Text**: fonts (Latin / East Asian / complex script, theme fonts, embedded
 fonts), sizes, bold, italic, underline styles, strike, caps, baseline,
 spacing, kerning, highlight, outline, gradient text, shadows, bullets
-(characters, pictures, auto-numbering), indents, line and paragraph spacing,
-alignment, vertical text, columns, insets, autofit (font scale and line
-spacing reduction), fields (slide number, dates), hyperlinks and actions,
-symbol fonts mapped to Unicode.
+(characters, pictures, auto-numbering), indents, tab stops, line and
+paragraph spacing (extra spacing above the line, as Office does), alignment,
+vertical text, columns, insets, autofit (font scale and line spacing
+reduction), WordArt transforms (all 40 warp and follow-path presets),
+fields (slide number, dates), hyperlinks and actions, symbol fonts mapped to
+Unicode.
 
 **Objects**: pictures (crop, duotone, grayscale, brightness/contrast, colour
-change, alpha, SVG blips, EMF/WMF converted to SVG), tables (table styles,
+change, alpha, SVG blips, EMF/WMF converted to SVG, TIFF converted to PNG),
+tables (table styles,
 banding, merged cells, cell borders and fills), charts (bar, column, line,
 area, pie, doughnut, scatter, bubble, radar, stock, combo, secondary axes,
 trend lines, data labels, number formats; 3D charts drawn in 2D),
 SmartArt (pre-rendered drawing), audio and video with bookmarks and
-trimming, OLE objects (preview picture), slide backgrounds.
+trimming, OLE objects and ActiveX controls (preview picture, including
+legacy VML previews), slide backgrounds, shapes filled with the background.
 
 **Animations**: entrance / emphasis / exit / motion path effects with their
 filters (wipe, split, blinds, box, checkerboard, circle, diamond, dissolve,

@@ -253,5 +253,38 @@ export function build(deck) {
     s.add(textBox({ id: s.id(), name: 'warp', x: 40, y: 540, w: 1200, h: 140, bodyPr: '<a:bodyPr wrap="none"><a:prstTxWarp prst="textArchUp"><a:avLst/></a:prstTxWarp><a:spAutoFit/></a:bodyPr>', text: [{ pPr: 'algn="ctr"', runs: [{ t: 'Arch up WordArt', rPr: 'sz="4800" b="1"', inner: solid('00B050') }] }] }));
     out.push({ slide: s.index, feature: 'text/wordart', compareLO: true, checks: [{ kind: 'text', contains: 'Glowing text' }, { kind: 'dom', selector: '.pp-p span[style*="text-shadow"]', min: 1 }] });
   }
+
+  // --- WordArt transforms (prstTxWarp) --------------------------------------------------
+  {
+    const s = deck.slide({ name: 'WordArt warps' });
+    label(s, 'WordArt transforms: arch, circle, button, wave, inflate, deflate, slant, triangle, chevron, can, fade, cascade, ring, plain');
+    const warps = ['textArchUp', 'textArchDown', 'textCircle', 'textButton', 'textWave1', 'textInflate', 'textDeflate', 'textSlantUp',
+      'textTriangle', 'textChevron', 'textCanUp', 'textFadeRight', 'textCascadeUp', 'textRingInside', 'textDeflateInflate', 'textPlain'];
+    warps.forEach((w, i) => {
+      const x = 30 + (i % 4) * 310, y = 70 + Math.floor(i / 4) * 160;
+      const lines = w === 'textButton' || w === 'textDeflateInflate' ? ['Word', 'Art', 'Text'].slice(0, w === 'textButton' ? 3 : 2) : ['WordArt'];
+      s.add(shape({
+        id: s.id(), name: w, x, y, w: 280, h: 130, fill: '<a:noFill/>', line: '<a:ln><a:noFill/></a:ln>', style: '',
+        bodyPr: `<a:bodyPr wrap="none" lIns="0" tIns="0" rIns="0" bIns="0" anchor="ctr"><a:prstTxWarp prst="${w}"><a:avLst/></a:prstTxWarp><a:noAutofit/></a:bodyPr>`,
+        text: lines.map((t) => ({ pPr: 'algn="ctr"', runs: [{ t, rPr: 'sz="3200" b="1"', inner: solid(['C00000', '0070C0', '00B050', '7030A0'][i % 4]) }] })),
+      }));
+    });
+    // The glyphs of an arch are rotated along the path; plain text is stretched over the box.
+    const warpCheck = (sec) => {
+      const tx = [...sec.querySelectorAll('.pp-tx[data-warp]')];
+      if (tx.length !== 16) return tx.length + ' warped text bodies';
+      const arch = tx[0].querySelectorAll('.pp-wg');
+      if (arch.length !== 7) return arch.length + ' glyphs in the arch';
+      const rot = (g) => { const m = new DOMMatrix(getComputedStyle(g).transform); return Math.atan2(m.b, m.a) * 180 / Math.PI; };
+      const r0 = rot(arch[0]), r6 = rot(arch[6]);
+      if (!(r0 < -8 && r6 > 8)) return `arch rotations ${r0.toFixed(1)} / ${r6.toFixed(1)}`;
+      const plain = tx[15].getBoundingClientRect(), glyphs = [...tx[15].querySelectorAll('.pp-wg')].map((g) => g.getBoundingClientRect());
+      const left = Math.min(...glyphs.map((r) => r.left)), right = Math.max(...glyphs.map((r) => r.right));
+      const bottom = Math.max(...glyphs.map((r) => r.bottom)), top = Math.min(...glyphs.map((r) => r.top));
+      // Ink fills the box: glyph boxes span its width and (with their leading) cover its height.
+      return (Math.abs(left - plain.left) < 3 && Math.abs(right - plain.right) < 3 && top <= plain.top && bottom >= plain.bottom) || `plain text box ${[left, top, right, bottom].map((v) => v.toFixed(0))} vs ${[plain.left, plain.top, plain.right, plain.bottom].map((v) => v.toFixed(0))}`;
+    };
+    out.push({ slide: s.index, feature: 'text/warp', compareLO: true, checks: [{ kind: 'eval', desc: 'glyphs follow arch and fill plain warp', fn: warpCheck }] });
+  }
   return out;
 }

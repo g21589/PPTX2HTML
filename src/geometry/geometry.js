@@ -3,6 +3,7 @@
  * custom geometries and produces path segments in pixel space.
  */
 import { PRESETS } from './presets.js';
+import { TEXT_WARPS } from './textwarps.js';
 
 const DEG = Math.PI / 180;
 const ANG = 60000; // 1 degree in DrawingML angle units
@@ -72,11 +73,12 @@ function parseGuideList(s) {
 const presetCache = new Map();
 
 /** Parse a compact preset definition into a geometry definition object. */
-function presetDef(name) {
-  if (presetCache.has(name)) return presetCache.get(name);
-  const p = PRESETS[name];
+function presetDef(name, table = PRESETS) {
+  const key = (table === PRESETS ? 's:' : 'w:') + name;
+  if (presetCache.has(key)) return presetCache.get(key);
+  const p = Object.prototype.hasOwnProperty.call(table, name) ? table[name] : null;
   if (!p) {
-    presetCache.set(name, null);
+    presetCache.set(key, null);
     return null;
   }
   const def = {
@@ -93,7 +95,7 @@ function presetDef(name) {
       };
     }),
   };
-  presetCache.set(name, def);
+  presetCache.set(key, def);
   return def;
 }
 
@@ -274,6 +276,37 @@ export function presetGeometry(name, wEmu, hEmu, adj, scale) {
   const def = presetDef(name);
   if (!def) return null;
   return computeGeometry(def, wEmu, hEmu, adj, scale);
+}
+
+/** Preset text warp geometry (prstTxWarp) by name, null when unknown. */
+export function textWarpGeometry(name, wEmu, hEmu, adj, scale) {
+  const def = presetDef(name, TEXT_WARPS);
+  if (!def) return null;
+  return computeGeometry(def, wEmu, hEmu, adj, scale);
+}
+
+/** Flatten path segments to a polyline [x0, y0, x1, y1, ...]. */
+export function segsToPolyline(segs, steps = 16) {
+  const out = [];
+  let cx = 0, cy = 0;
+  for (const s of segs) {
+    const p = s.p;
+    if (s.c === 'M' || s.c === 'L') { cx = p[0]; cy = p[1]; out.push(cx, cy); }
+    else if (s.c === 'C') {
+      for (let i = 1; i <= steps; i++) {
+        const t = i / steps, u = 1 - t;
+        out.push(u * u * u * cx + 3 * u * u * t * p[0] + 3 * u * t * t * p[2] + t * t * t * p[4], u * u * u * cy + 3 * u * u * t * p[1] + 3 * u * t * t * p[3] + t * t * t * p[5]);
+      }
+      cx = p[4]; cy = p[5];
+    } else if (s.c === 'Q') {
+      for (let i = 1; i <= steps; i++) {
+        const t = i / steps, u = 1 - t;
+        out.push(u * u * cx + 2 * u * t * p[0] + t * t * p[2], u * u * cy + 2 * u * t * p[1] + t * t * p[3]);
+      }
+      cx = p[2]; cy = p[3];
+    }
+  }
+  return out;
 }
 
 export function presetAdjustNames(name) {

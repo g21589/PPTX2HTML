@@ -8,7 +8,7 @@
  */
 import { evaluate, stepEnd } from './engine.js';
 import { filterStyle, transitionFrame } from './effects.js';
-import { layoutTabs } from './layout.js';
+import { layoutText } from './layout.js';
 
 const PLAYER_CSS = `
 html.pp-deck-mode,html.pp-deck-mode body{margin:0;height:100%;overflow:hidden;background:#000}
@@ -314,12 +314,12 @@ export class Player {
     if (document.fonts && document.fonts.ready) {
       document.fonts.ready.then(() => {
         for (const s of this.sections) s.ppLaidOut = false;
-        if (this.opts.mode === 'list') layoutTabs(this.deck);
-        else if (this.sections[this.cur]) { layoutTabs(this.sections[this.cur]); this.sections[this.cur].ppLaidOut = true; }
+        if (this.opts.mode === 'list') layoutText(this.deck);
+        else if (this.sections[this.cur]) { layoutText(this.sections[this.cur]); this.sections[this.cur].ppLaidOut = true; }
       });
     }
     if (this.opts.mode === 'list') {
-      layoutTabs(this.deck);
+      layoutText(this.deck);
       this.initMedia(this.deck);
       this.initLinks(this.deck, true);
       return this;
@@ -763,7 +763,7 @@ export class Player {
     for (const s of this.sections) s.classList.remove('pp-current', 'pp-prev', 'pp-on-top');
     const sec = this.sections[i];
     sec.classList.add('pp-current');
-    if (!sec.ppLaidOut) { layoutTabs(sec); sec.ppLaidOut = true; }
+    if (!sec.ppLaidOut) { layoutText(sec); sec.ppLaidOut = true; }
     try { if (location.hash !== '#slide-' + (i + 1)) history.replaceState(null, '', '#slide-' + (i + 1)); } catch (e) { /* ignore */ }
     this.updateUi();
     // Initial animation state (silently, without running media commands).

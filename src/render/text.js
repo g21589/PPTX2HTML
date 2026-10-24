@@ -6,6 +6,7 @@ import { css } from '../pptx/color.js';
 import { r2, r4, PX_PER_PT } from '../util/units.js';
 import { fontStack } from './fonts.js';
 import { cssBackground, fillColor } from './paint.js';
+import { textWarpGeometry, segsToPolyline } from '../geometry/geometry.js';
 
 const LINE = 1.2; // single line spacing relative to the font size
 
@@ -198,6 +199,20 @@ export function paragraphsHtml(tb, rc, o = {}) {
   return html;
 }
 
+/**
+ * WordArt warp (prstTxWarp): the warp paths over the inset text rectangle,
+ * flattened to polylines in the text box's coordinates. The runtime maps the
+ * glyphs onto them (src/runtime/layout.js).
+ */
+function warpAttr(b, w, h) {
+  if (!b.warp || b.warp === 'textNoShape' || (b.vert && b.vert !== 'horz')) return '';
+  const iw = Math.max(1, w - b.lIns - b.rIns), ih = Math.max(1, h - b.tIns - b.bIns);
+  const g = textWarpGeometry(b.warp, iw * 9525, ih * 9525, b.warpAdj || {}, 1 / 9525);
+  if (!g || !g.paths.length) return '';
+  const paths = g.paths.map((p) => segsToPolyline(p.segs).map((v, i) => Math.round((v + (i % 2 ? b.tIns : b.lIns)) * 10) / 10));
+  return ` data-warp="${escapeXml(JSON.stringify({ k: b.warp, p: paths }))}"`;
+}
+
 const ANCHOR = { t: 'flex-start', ctr: 'center', b: 'flex-end', just: 'center', dist: 'center' };
 
 /**
@@ -234,5 +249,5 @@ export function textBodyHtml(tb, box, rc, o = {}) {
   if (b.numCol > 1) inner = `<div class="pp-cols" style="column-count:${b.numCol};column-gap:${r2(b.spcCol)}px;column-fill:auto;height:100%">${inner}</div>`;
   else if (b.anchorCtr) inner = `<div class="pp-actr-in">${inner}</div>`;
   const fit = b.autofit && b.autofit.type === 'norm' ? ' data-autofit="1"' : '';
-  return `<div class="${cls}" style="${s}"${fit}>${inner}</div>`;
+  return `<div class="${cls}" style="${s}"${fit}${warpAttr(b, w, h)}>${inner}</div>`;
 }
