@@ -231,6 +231,8 @@ class Builder {
     const p = this.dm.pres.get(ln.data.pt.id + '|' + ln.name);
     const lv = p && p.prSet && p.prSet.child('dgm:presLayoutVars');
     if (lv) this.vars(lv, ln);
+    // A shape resized by the user (fractions of 100000).
+    if (p && (p.pr.custScaleX || p.pr.custScaleY)) ln.custScale = [Number(p.pr.custScaleX || 100000) / 100000, Number(p.pr.custScaleY || 100000) / 100000];
   }
 
   test(cond, ln) {
@@ -678,6 +680,9 @@ function hierNat(ln) {
   } else {
     const w = cval(ln, 'w'), h = cval(ln, 'h');
     nat = { w: Number.isFinite(w) && w > 0 ? w : 100, h: Number.isFinite(h) && h > 0 ? h : 60 };
+    // User-resized node shapes take their size in the hierarchy.
+    const cs = [ln, ...ln.children].find((k) => k.custScale);
+    if (cs) nat = { w: nat.w * cs.custScale[0], h: nat.h * cs.custScale[1] };
   }
   ln.nat = nat;
   return nat;
