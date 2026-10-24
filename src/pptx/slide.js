@@ -729,6 +729,13 @@ export class SlideBuilder {
       const ac = gd.child('mc:AlternateContent');
       if (ac) {
         for (const x of chooseAlternate(ac)) if (x.local === 'oleObj') ole = x;
+        // The VML branch usually has no picture: prefer one that does.
+        if (!ole || !ole.child('p:pic')) {
+          for (const branch of ac.children) {
+            const o = branch.children.find((x) => x.local === 'oleObj' && x.child('p:pic'));
+            if (o) { ole = o; break; }
+          }
+        }
       }
     }
     if (!ole) return null;

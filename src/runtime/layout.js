@@ -236,8 +236,45 @@ export function layoutWarps(root) {
   }
 }
 
+// ---- autofit ------------------------------------------------------------------
+
+/** Height of the paragraphs of a text body (offsets ignore slide scaling). */
+function contentHeight(tx) {
+  const ps = tx.querySelectorAll(':scope > .pp-p, :scope > div > .pp-p');
+  if (!ps.length) return 0;
+  const first = ps[0], last = ps[ps.length - 1];
+  const cs = getComputedStyle(first), ce = getComputedStyle(last);
+  return last.offsetTop + last.offsetHeight + parseFloat(ce.marginBottom) - (first.offsetTop - parseFloat(cs.marginTop));
+}
+
+/**
+ * Auto-fitting text bodies (normAutofit / spAutoFit) were fitted by Office
+ * with the original fonts; substituted fonts can be larger. Shrink the text
+ * (through --pp-fs) until it fits its box again.
+ */
+export function layoutFit(root) {
+  for (const tx of root.querySelectorAll('.pp-tx[data-fit]')) {
+    if (tx.offsetParent === null) continue;
+    tx.style.removeProperty('--pp-fs');
+    const cs = getComputedStyle(tx);
+    const avail = tx.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
+    const nowrap = tx.classList.contains('pp-nowrap');
+    const availW = tx.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+    const over = () => contentHeight(tx) > avail + 1 || (nowrap && tx.scrollWidth > tx.clientWidth + 1 && availW > 0);
+    if (avail <= 0 || !over()) continue;
+    let lo = 0.4, hi = 1;
+    for (let i = 0; i < 7; i++) {
+      const mid = (lo + hi) / 2;
+      tx.style.setProperty('--pp-fs', String(mid));
+      if (over()) hi = mid; else lo = mid;
+    }
+    tx.style.setProperty('--pp-fs', String(Math.round(lo * 1000) / 1000));
+  }
+}
+
 /** All measured text layout for a slide or deck. */
 export function layoutText(root) {
+  layoutFit(root);
   layoutTabs(root);
   layoutWarps(root);
 }

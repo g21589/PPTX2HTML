@@ -210,14 +210,14 @@ npm run verify         # … plus LibreOffice reference renders and similarity s
 4. Writes `verify-report/index.html` (side-by-side screenshots, check
    results) and `verify-report/summary.json`; exits with 1 when a check fails.
 
-`tools/smartart-oracle.mjs` checks the SmartArt layout engine against
-PowerPoint itself: it renders diagrams from decks that contain PowerPoint's
-pre-rendered drawing both ways and scores the difference.
-
 Options: `--no-lo`, `--only <feature>`, `--out <dir>`, and
 `--corpus <dir>` (repeatable) to also convert and compare a folder of real
 presentations. The generated decks are also in [`samples/features`](samples/features)
 (`npm run samples` regenerates them).
+
+`tools/smartart-oracle.mjs` checks the SmartArt layout engine against
+PowerPoint itself: it renders diagrams from decks that contain PowerPoint's
+pre-rendered drawing both ways and scores the difference.
 
 Project layout
 --------------
@@ -228,6 +228,7 @@ src/opc        Open Packaging Conventions (parts, relationships, content types)
 src/geometry   preset geometry definitions and the guide formula evaluator
 src/pptx       presentation model: theme, colours, fills, text, slides, tables, timing, transitions
 src/chart      chart parser, number formats and SVG renderer
+src/smartart   SmartArt layout engine (diagrams without a pre-rendered drawing)
 src/render     HTML/SVG renderers and document assembly
 src/runtime    animation engine, effect filters, transitions and the player
 bin            command line interface

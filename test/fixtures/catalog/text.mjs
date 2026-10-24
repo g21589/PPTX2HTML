@@ -178,6 +178,17 @@ export function build(deck) {
       name: 'tab stops', x: 680, y: 440, w: 560, h: 120, bodyPr: '<a:bodyPr anchor="t"/>',
       text: [{ pPr: '', pInner: '<a:tabLst><a:tab pos="1371600" algn="l"/><a:tab pos="2743200" algn="ctr"/><a:tab pos="4572000" algn="r"/></a:tabLst>', runs: [{ t: 'Left\tStop\tCentre\tRight', rPr: 'sz="1600"' }] }],
     });
+    // Auto-fit: more text than fits at 24pt; the runtime shrinks it into the box.
+    box(s, { name: 'autofit', x: 1000, y: 580, w: 240, h: 100, bodyPr: '<a:bodyPr anchor="t"><a:normAutofit/></a:bodyPr>', text: [{ runs: [{ t: 'Shrink this text so that it fits inside its box', rPr: 'sz="2400"' }] }] });
+    const fitCheck = (sec) => {
+      const tx = sec.querySelector('.pp-tx[data-fit="norm"]');
+      if (!tx) return 'no auto-fit body';
+      const k = parseFloat(tx.style.getPropertyValue('--pp-fs'));
+      const p = tx.querySelector('.pp-p');
+      const cs = getComputedStyle(tx);
+      const avail = tx.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
+      return (k > 0.4 && k < 1 && p.offsetHeight <= avail + 1) || `scale ${k}, text ${p.offsetHeight} / ${avail}`;
+    };
     const pitchCheck = (sec) => {
       const pitch = (prefix) => {
         const span = [...sec.querySelectorAll('.pp-p > span')].find((e) => e.textContent.startsWith(prefix));
@@ -200,7 +211,7 @@ export function build(deck) {
       const exp = [144, 288, 480];
       return got.every((v, i) => Math.abs(v - exp[i]) <= 2) || 'stops at ' + got.map((v) => v.toFixed(1)).join(', ');
     };
-    out.push({ slide: s.index, feature: 'text/spacing', compareLO: true, checks: [{ kind: 'dom', selector: '.pp-p[style*="margin-bottom:32px"]', min: 1 }, { kind: 'dom', selector: '.pp-p br', min: 1 }, { kind: 'eval', desc: 'line pitch: exact 30pt = 40px, double 14pt = 44.8px', fn: pitchCheck }, { kind: 'eval', desc: 'left / centre / right tab stops', fn: tabCheck }] });
+    out.push({ slide: s.index, feature: 'text/spacing', compareLO: true, checks: [{ kind: 'dom', selector: '.pp-p[style*="margin-bottom:32px"]', min: 1 }, { kind: 'dom', selector: '.pp-p br', min: 1 }, { kind: 'eval', desc: 'line pitch: exact 30pt = 40px, double 14pt = 44.8px', fn: pitchCheck }, { kind: 'eval', desc: 'left / centre / right tab stops', fn: tabCheck }, { kind: 'eval', desc: 'over-full auto-fit text shrinks into its box', fn: fitCheck }] });
   }
 
   // --- Vertical text, rotation ------------------------------------------------------

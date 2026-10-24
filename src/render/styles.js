@@ -10,8 +10,8 @@ export const BASE_CSS = `
 .pp-tx{position:absolute;display:flex;flex-direction:column;overflow:visible;word-wrap:break-word;overflow-wrap:break-word;transform-origin:50% 50%}
 .pp-p{margin:0;padding:0;font-size:0;white-space:pre-wrap;flex:none;text-indent:0}
 .pp-p span{white-space:inherit}
-.pp-lsb{line-height:var(--pp-l)}
-.pp-lsb span,.pp-lsb .pp-bu{vertical-align:bottom;line-height:min(1.2em,var(--pp-l))}
+.pp-lsb{line-height:calc(var(--pp-l) * var(--pp-fs,1))}
+.pp-lsb span,.pp-lsb .pp-bu{vertical-align:bottom;line-height:min(1.2em,calc(var(--pp-l) * var(--pp-fs,1)))}
 .pp-nowrap .pp-p{white-space:pre;width:max-content;min-width:100%}
 .pp-actr{align-items:center}
 .pp-actr-in{max-width:100%}

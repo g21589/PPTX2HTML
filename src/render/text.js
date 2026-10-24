@@ -32,11 +32,16 @@ function textShadowCss(fx) {
 }
 
 /** Inline CSS for a run style. */
+/** Font size declaration; scalable text bodies shrink through --pp-fs at runtime. */
+function fontSize(px, o) {
+  return o && o.fit ? `font-size:calc(${r2(px)}px * var(--pp-fs,1));` : `font-size:${r2(px)}px;`;
+}
+
 export function runCss(st, rc, o = {}) {
   let s = '';
   let size = st.size * PX_PER_PT;
   if (st.baseline) size *= 2 / 3;
-  s += `font-size:${r2(size)}px;`;
+  s += fontSize(size, o);
   s += `font-family:${fontStack(st.latin, st.ea, st.cs, { symbol: st.symbolMapped })};`;
   if (st.bold) s += 'font-weight:bold;';
   if (st.italic) s += 'font-style:italic;';
@@ -117,14 +122,14 @@ function spacingPx(sp, size) {
   return sp.pct * size * PX_PER_PT;
 }
 
-function bulletHtml(para, rc) {
+function bulletHtml(para, rc, o) {
   const b = para.bullet;
   if (!b) return '';
   const base = b.baseSize || (para.runs[0] && para.runs[0].style.size) || 18;
   const sizePt = b.sizePt || base * (b.size || 1);
   const indent = para.indent;
   const minW = indent < 0 ? -indent : 0;
-  let s = `font-size:${r2(sizePt * PX_PER_PT)}px;`;
+  let s = fontSize(sizePt * PX_PER_PT, o);
   if (b.kind !== 'image') s += `font-family:${fontStack(b.font, null, null, { symbol: false })};`;
   if (b.color) s += `color:${css(b.color)};`;
   if (b.kind === 'num' && b.bold) s += 'font-weight:bold;';
@@ -190,10 +195,10 @@ export function paragraphsHtml(tb, rc, o = {}) {
       inner += la ? `<a class="pp-a" ${la}>${span}</a>` : span;
     }
     // Trailing line break or empty paragraph: keep the line height using the end run size.
-    const endCss = `font-size:${r2(p.endStyle.size * PX_PER_PT)}px;font-family:${fontStack(p.endStyle.latin, p.endStyle.ea, p.endStyle.cs)};`;
+    const endCss = `${fontSize(p.endStyle.size * PX_PER_PT, o)}font-family:${fontStack(p.endStyle.latin, p.endStyle.ea, p.endStyle.cs)};`;
     if (!hasContent || (p.runs.length && p.runs[p.runs.length - 1].kind === 'br')) inner += `<span style="${endCss}">&#8203;</span>`;
     if (hasTab) inner += '<span class="pp-tab-end"></span>';
-    const bullet = hasContent ? bulletHtml(p, rc) : '';
+    const bullet = hasContent ? bulletHtml(p, rc, o) : '';
     html += `<div class="pp-p${lh.cls || ''}" data-para="${p.index}" style="${ps}"${tabAttrs}>${bullet}${inner}</div>`;
   }
   return html;
@@ -245,9 +250,10 @@ export function textBodyHtml(tb, box, rc, o = {}) {
   }
   if (b.wrap === 'none') cls += ' pp-nowrap';
   if (b.anchorCtr) cls += ' pp-actr';
-  let inner = paragraphsHtml(tb, rc, { ...o, nowrap: b.wrap === 'none' && !vertical });
+  // Auto-fitting bodies may shrink at runtime when substituted fonts overflow.
+  const fit = !vertical && b.autofit && (b.autofit.type === 'norm' || b.autofit.type === 'shape');
+  let inner = paragraphsHtml(tb, rc, { ...o, nowrap: b.wrap === 'none' && !vertical, fit });
   if (b.numCol > 1) inner = `<div class="pp-cols" style="column-count:${b.numCol};column-gap:${r2(b.spcCol)}px;column-fill:auto;height:100%">${inner}</div>`;
   else if (b.anchorCtr) inner = `<div class="pp-actr-in">${inner}</div>`;
-  const fit = b.autofit && b.autofit.type === 'norm' ? ' data-autofit="1"' : '';
-  return `<div class="${cls}" style="${s}"${fit}${warpAttr(b, w, h)}>${inner}</div>`;
+  return `<div class="${cls}" style="${s}"${fit ? ` data-fit="${b.autofit.type}"` : ''}${warpAttr(b, w, h)}>${inner}</div>`;
 }
