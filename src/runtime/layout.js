@@ -132,16 +132,19 @@ export function layoutWarps(root) {
     const marker = document.createElement('span');
     marker.style.cssText = 'display:inline-block;width:0;height:0;vertical-align:baseline';
     const lines = [];
-    let cur = null, lastX = Infinity, lastPara = null;
+    let cur = null, lastY = -Infinity, lastH = 0, lastPara = null;
     for (const g of glyphs) {
       const [x, y] = rel(g);
       const para = g.closest('.pp-p');
       g.appendChild(marker);
       const m = { g, x, y, w: g.offsetWidth, h: g.offsetHeight, base: rel(marker)[1] - y, size: parseFloat(getComputedStyle(g).fontSize) || 16, text: g.textContent, space: SPACE.test(g.textContent) };
       marker.remove();
-      if (!cur || para !== lastPara || x < lastX - 0.5) { cur = []; lines.push(cur); }
+      // A wrapped line starts at least half a glyph lower (offsets are whole
+      // pixels, so horizontal positions are too coarse to tell).
+      if (!cur || para !== lastPara || y >= lastY + lastH / 2) { cur = []; lines.push(cur); }
       cur.push(m);
-      lastX = x + m.w;
+      lastY = y;
+      lastH = m.h;
       lastPara = para;
     }
     const metrics = [];
