@@ -851,6 +851,9 @@ class ChartRenderer {
     let s = '';
     const labels = [];
     const ends = [];
+    // 3D bars: boxes seen obliquely (depth along the view angles).
+    const v3 = p.type === 'bar3DChart' ? this.chart.view3D || { rotX: 15, rotY: 20, depth: 100 } : null;
+    const boxes = [];
     series.forEach((ser, sIdx) => {
       const si = this.seriesIndex(ser);
       const vals = ser.val ? ser.val.values : [];
@@ -879,13 +882,37 @@ class ChartRenderer {
         const line = this.seriesLine(ser, si, i, false);
         let rx, ry, rw, rh;
         if (gi.vertical) { rx = startOff; rw = bw; ry = Math.min(p0, p1); rh = Math.abs(p1 - p0); } else { ry = startOff; rh = bw; rx = Math.min(p0, p1); rw = Math.abs(p1 - p0); }
-        s += this.barShape(rx, ry, rw, rh, fill, line, ser, p);
+        if (v3) boxes.push({ rx, ry, rw, rh, fill, line, d: bw });
+        else s += this.barShape(rx, ry, rw, rh, fill, line, ser, p);
         labels.push({ ser, si, i, v: vals[i], rect: { x: rx, y: ry, w: rw, h: rh }, neg: v < 0, plot: p });
         (ends[sIdx] = ends[sIdx] || []).push({ i, at: gi.vertical ? rx + rw / 2 : ry + rh / 2, v: v1 });
       }
     });
+    if (v3) s += this.bars3D(boxes, v3, gi.vertical);
     series.forEach((ser, sIdx) => { s += this.errorBars(ser, gi, area, ends[sIdx] || [], 'cat'); });
     return `<g class="pp-chart-bars">${s}${this.barLabels(labels, gi, cats)}</g>`;
+  }
+
+  /** Boxes with shaded top and side faces, drawn back to front. */
+  bars3D(boxes, v3, vertical) {
+    const rad = Math.PI / 180;
+    const k = Math.max(0.2, Math.min(2, (v3.depth || 100) / 100)) * 0.6;
+    const sx = Math.sin((v3.rotY || 0) * rad), sy = Math.sin((v3.rotX || 0) * rad);
+    // Faces reach into the next bar's space: draw the bars they reach into later.
+    const order = vertical ? (a, b) => (sx >= 0 ? a.rx - b.rx : b.rx - a.rx) || b.ry - a.ry : (a, b) => b.ry - a.ry || (sx >= 0 ? a.rx - b.rx : b.rx - a.rx);
+    let s = '';
+    for (const b of boxes.sort(order)) {
+      const dx = b.d * k * sx, dy = b.d * k * sy;
+      const { rw: w, rh: h } = b;
+      const face = (pts, shade) => {
+        const d = 'M' + pts.map(([x, y]) => `${r2(x)} ${r2(y)}`).join('L') + 'Z';
+        return `<path d="${d}" ${this.paintAttr(b.fill, w, h)} ${this.strokeAttr(b.line)}/><path d="${d}" fill="${shade > 0 ? '#fff' : '#000'}" fill-opacity="${Math.abs(shade)}"/>`;
+      };
+      const side = sx >= 0 ? [[w, 0], [w + dx, -dy], [w + dx, h - dy], [w, h]] : [[0, 0], [dx, -dy], [dx, h - dy], [0, h]];
+      s += `<g transform="translate(${r2(b.rx)} ${r2(b.ry)})">${dx ? face(side, -0.25) : ''}${dy ? face([[0, 0], [w, 0], [w + dx, -dy], [dx, -dy]], 0.2) : ''}</g>`;
+      s += this.rect(b.rx, b.ry, w, h, b.fill, b.line);
+    }
+    return s;
   }
 
   barShape(x, y, w, h, fill, line, ser, p) {

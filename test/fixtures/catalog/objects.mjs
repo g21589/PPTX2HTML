@@ -36,7 +36,7 @@ const valAxes = () => `<c:valAx><c:axId val="1"/><c:scaling><c:orientation val="
 
 function chartSpace(title, plot, o = {}) {
   return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<c:chartSpace ${C_NS}><c:roundedCorners val="0"/><c:chart>${title ? `<c:title><c:tx><c:rich><a:bodyPr/><a:p><a:pPr><a:defRPr sz="1400" b="0"/></a:pPr><a:r><a:rPr lang="en-US" sz="1400"/><a:t>${esc(title)}</a:t></a:r></a:p></c:rich></c:tx><c:overlay val="0"/></c:title><c:autoTitleDeleted val="0"/>` : '<c:autoTitleDeleted val="1"/>'}<c:plotArea><c:layout/>${plot}</c:plotArea>${o.legend === false ? '' : `<c:legend><c:legendPos val="${o.legend || 'b'}"/><c:overlay val="0"/></c:legend>`}<c:plotVisOnly val="1"/><c:dispBlanksAs val="gap"/></c:chart><c:txPr><a:bodyPr/><a:lstStyle/><a:p><a:pPr><a:defRPr sz="1000"/></a:pPr><a:endParaRPr lang="en-US"/></a:p></c:txPr></c:chartSpace>`;
+<c:chartSpace ${C_NS}><c:roundedCorners val="0"/><c:chart>${title ? `<c:title><c:tx><c:rich><a:bodyPr/><a:p><a:pPr><a:defRPr sz="1400" b="0"/></a:pPr><a:r><a:rPr lang="en-US" sz="1400"/><a:t>${esc(title)}</a:t></a:r></a:p></c:rich></c:tx><c:overlay val="0"/></c:title><c:autoTitleDeleted val="0"/>` : '<c:autoTitleDeleted val="1"/>'}${o.view3D ? `<c:view3D>${o.view3D}</c:view3D>` : ''}<c:plotArea><c:layout/>${plot}</c:plotArea>${o.legend === false ? '' : `<c:legend><c:legendPos val="${o.legend || 'b'}"/><c:overlay val="0"/></c:legend>`}<c:plotVisOnly val="1"/><c:dispBlanksAs val="gap"/></c:chart><c:txPr><a:bodyPr/><a:lstStyle/><a:p><a:pPr><a:defRPr sz="1000"/></a:pPr><a:endParaRPr lang="en-US"/></a:p></c:txPr></c:chartSpace>`;
 }
 
 export function build(deck) {
@@ -202,10 +202,12 @@ export function build(deck) {
       ['Radar', `<c:radarChart><c:radarStyle val="marker"/><c:varyColors val="0"/>${series(0, 'r1', ['a', 'b', 'c', 'd', 'e'], [4, 3, 5, 2, 4])}${series(1, 'r2', ['a', 'b', 'c', 'd', 'e'], [2, 5, 3, 4, 1])}<c:axId val="1"/><c:axId val="2"/></c:radarChart>${axes('b', 'l', { grid: true })}`],
       ['Stock (HLC)', `<c:stockChart>${series(0, 'High', cats, [12, 14, 13, 15])}${series(1, 'Low', cats, [8, 9, 10, 11])}${series(2, 'Close', cats, [10, 12, 11, 14], '<c:spPr><a:ln><a:noFill/></a:ln></c:spPr><c:marker><c:symbol val="dash"/><c:size val="8"/></c:marker>')}<c:hiLowLines/><c:axId val="1"/><c:axId val="2"/></c:stockChart>${axes()}`],
       ['Combo + data labels', `<c:barChart><c:barDir val="col"/><c:grouping val="clustered"/><c:varyColors val="0"/>${series(0, 'Units', cats, [120, 150, 90, 180], '<c:dLbls><c:showLegendKey val="0"/><c:showVal val="1"/><c:showCatName val="0"/><c:showSerName val="0"/><c:showPercent val="0"/><c:showBubbleSize val="0"/></c:dLbls>')}<c:axId val="1"/><c:axId val="2"/></c:barChart><c:lineChart><c:grouping val="standard"/><c:varyColors val="0"/>${series(1, 'Trend', cats, [100, 130, 110, 170])}<c:marker val="1"/><c:axId val="1"/><c:axId val="2"/></c:lineChart>${axes('b', 'l', { title: 'Units' })}`],
+      ['3D clustered column', `<c:bar3DChart><c:barDir val="col"/><c:grouping val="clustered"/><c:varyColors val="0"/>${series(0, 'North', cats, [4, 3, 2, 5])}${series(1, 'South', cats, [2, 4, 3, 1])}<c:gapWidth val="150"/><c:shape val="box"/><c:axId val="1"/><c:axId val="2"/><c:axId val="0"/></c:bar3DChart>${axes()}`, '<c:rotX val="15"/><c:rotY val="20"/><c:depthPercent val="100"/><c:rAngAx val="1"/>'],
       ['Clustered bar (horizontal)', `<c:barChart><c:barDir val="bar"/><c:grouping val="clustered"/><c:varyColors val="0"/>${series(0, 'First', cats, [4, 3, 2, 5])}${series(1, 'Second', cats, [2, 4, 3, 1])}<c:gapWidth val="80"/><c:axId val="1"/><c:axId val="2"/></c:barChart>${axes('l', 'b')}`],
     ];
     const barOrderCheck = (sec) => {
-      const r = [...sec.querySelectorAll('.pp-chart-bars rect')].map((e) => e.getBoundingClientRect().top);
+      const charts = [...sec.querySelectorAll('.pp-chart-bars')];
+      const r = [...charts[charts.length - 1].querySelectorAll('rect')].map((e) => e.getBoundingClientRect().top);
       if (r.length !== 8) return r.length + ' bars';
       // Bars of series First come first (Q1..Q4), then Second.
       return (r[0] > r[3] && r[0] > r[4] && r[3] > r[7]) || 'bar tops ' + r.map((v) => v.toFixed(0)).join(' ');
@@ -214,16 +216,16 @@ export function build(deck) {
       const s = deck.slide({ name: 'Charts ' + (k / 6 + 1) });
       label(s, 'Charts ' + (k / 6 + 1));
       const sub = charts.slice(k, k + 6);
-      sub.forEach(([t, plot], i) => {
+      sub.forEach(([t, plot, view3D], i) => {
         const col = i % 3, row = Math.floor(i / 3);
-        const rid = s.chart(chartSpace(t, plot, { legend: t.startsWith('Pie') ? 'r' : 'b' }));
+        const rid = s.chart(chartSpace(t, plot, { legend: t.startsWith('Pie') ? 'r' : 'b', view3D }));
         s.add(graphicFrame({ id: s.id(), name: t, x: 20 + col * 420, y: 60 + row * 330, w: 400, h: 310 }, `<a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/chart"><c:chart xmlns:c="http://schemas.openxmlformats.org/drawingml/2006/chart" r:id="${rid}"/></a:graphicData>`));
       });
       out.push({
         slide: s.index, feature: 'chart/' + (k / 6 + 1), compareLO: true,
         checks: [{ kind: 'dom', selector: '.pp-chart svg', min: sub.length }, { kind: 'text', contains: sub[0][0] }, { kind: 'model', desc: 'chart series parsed', fn: (sl) => sl.elements.filter((e) => e.kind === 'chart' && e.chart.series.length).length === sub.length },
           ...(k === 0 ? [{ kind: 'dom', selector: '.pp-chart-err path', min: 8 }] : []),
-          ...(k === 12 ? [{ kind: 'eval', desc: 'horizontal bars: first category and first series at the bottom', fn: barOrderCheck }] : [])],
+          ...(k === 12 ? [{ kind: 'eval', desc: 'horizontal bars: first category and first series at the bottom', fn: barOrderCheck }, { kind: 'dom', selector: '.pp-chart-bars path[fill-opacity]', min: 16, desc: '3D columns have shaded top and side faces' }] : [])],
       });
     }
   }
