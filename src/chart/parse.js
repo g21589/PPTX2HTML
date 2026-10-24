@@ -333,7 +333,8 @@ function parseChartEx(root, ctx, doc, part) {
     const rich = titleN.first('cx:rich');
     let text = t ? t.textContent().trim() : null;
     if (rich) text = rich.all('a:p').map((p) => p.textContent()).join('\n');
-    chart.title = { text, rich: null, style: baseText, overlay: false };
+    // A title without text shows Office's default caption.
+    chart.title = { text: text || 'Chart Title', rich: null, style: baseText, overlay: titleN.bool('overlay', false), pos: titleN.attr('pos', 't') };
   }
   const plotArea = ch && ch.child('cx:plotArea');
   const region = plotArea && plotArea.child('cx:plotAreaRegion');
@@ -375,6 +376,7 @@ function parseChartEx(root, ctx, doc, part) {
   }
   const sp = root.child('cx:spPr');
   chart.chartArea = { fill: sp ? parseFill(sp, ctx) : undefined, line: sp && sp.child('a:ln') ? parseLine(sp.child('a:ln'), ctx) : undefined };
+  chart.palette = ['accent1', 'accent2', 'accent3', 'accent4', 'accent5', 'accent6'].map((a) => resolveColorNode({ name: 'a:schemeClr', attrs: { val: a }, children: [] }, ctx));
   void doc; void part;
   return chart;
 }

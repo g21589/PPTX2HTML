@@ -1464,9 +1464,25 @@ class ChartRenderer {
     const ser = c.series.find((s) => !s.hidden) || c.series[0];
     if (!ser || !ser.val) return this.finishEx();
     const f = this.font(c.textResolved);
+    // Legend: waterfalls show their three kinds of bars.
+    if (c.legend && ser.layoutId === 'waterfall' && (c.legend.pos === 't' || c.legend.pos === 'b')) {
+      const items = ['Increase', 'Decrease', 'Total'];
+      const widths = items.map((t) => f.size * 1.2 + textWidth(t, f.size) + f.size);
+      let x = (W - widths.reduce((a, b) => a + b, 0)) / 2;
+      const y = c.legend.pos === 't' ? top + f.size * 0.6 : H - pad - f.size * 0.6;
+      let leg = '';
+      items.forEach((t, i) => {
+        leg += this.rect(x, y - f.size * 0.4, f.size * 0.8, f.size * 0.8, { type: 'solid', color: this.seriesColor(ser, i) }, null);
+        leg += this.text(x + f.size * 1.1, y, t, f, { anchor: 'start' });
+        x += widths[i];
+      });
+      this.out.push(leg);
+      if (c.legend.pos === 't') top += f.size * 1.6;
+    }
     const vals = ser.val.values.map((v) => (Number.isFinite(v) ? v : 0));
     const labels = ser.cat ? ser.cat.values : vals.map((_, i) => String(i + 1));
-    const area = { x: pad + f.size * 3, y: top, w: W - pad * 2 - f.size * 3, h: H - top - pad - f.size * 2 };
+    const legendBottom = c.legend && ser.layoutId === 'waterfall' && c.legend.pos === 'b' ? f.size * 1.6 : 0;
+    const area = { x: pad + f.size * 3, y: top + f.size * 0.5, w: W - pad * 2 - f.size * 3, h: H - top - f.size * 0.5 - pad - f.size * 2 - legendBottom };
     const layout = ser.layoutId;
     const colorAt = (i) => (ser.dPts[i] && ser.dPts[i].fill) || ser.fill || { type: 'solid', color: this.seriesColor(ser, layout === 'waterfall' ? (vals[i] >= 0 ? 0 : 1) : i) };
     let s = '';
@@ -1525,6 +1541,12 @@ class ChartRenderer {
         const fill = layout === 'waterfall' && !(ser.dPts[i] && ser.dPts[i].fill) ? { type: 'solid', color: this.seriesColor(ser, ser.subtotals && ser.subtotals.includes(i) ? 2 : (b >= a ? 0 : 1)) } : colorAt(i);
         s += this.rect(area.x + i * bw + bw * 0.15, Math.min(y0, y1), bw * 0.7, Math.abs(y1 - y0), fill, null);
         s += this.text(area.x + i * bw + bw / 2, area.y + area.h + f.size, labs[i], f);
+        if (ser.dLbls && ser.dLbls.showVal) {
+          // Value labels outside the end of the bar.
+          const v = layout === 'waterfall' ? b - a : b;
+          const up = v >= 0;
+          s += this.text(area.x + i * bw + bw / 2, (up ? Math.min(y0, y1) : Math.max(y0, y1)) + (up ? -f.size * 0.7 : f.size * 0.7), formatGeneral(Math.round(v * 1e9) / 1e9), f);
+        }
       });
     }
     this.out.push(s);

@@ -774,7 +774,7 @@ export class SlideBuilder {
   vmlShape(spid, ctx) {
     const pkg = this.doc.pkg;
     const ids = /^\d+$/.test(spid) ? ['_x0000_s' + spid, spid] : [spid];
-    for (const r of pkg.relsByType(ctx.part, 'vmlDrawing')) {
+    for (const r of [...pkg.relsByType(ctx.part, 'vmlDrawing'), ...pkg.relsByType(ctx.part, 'legacyDrawing')]) {
       if (r.external || !pkg.has(r.partName)) continue;
       const vml = pkg.text(r.partName);
       for (const id of ids) {
