@@ -91,12 +91,22 @@ function linkAttrs(link) {
   return null;
 }
 
-function lineHeight(para, firstSize) {
+/**
+ * Line pitch. Office adds extra line spacing above each line (the text sits
+ * at the bottom of its line), CSS splits it evenly: for spacing above single
+ * the paragraph gets a fixed pitch (class pp-lsb) and its runs align to the
+ * bottom of the line box. Reduced spacing keeps the CSS behaviour.
+ */
+function lineHeight(para) {
   if (!para.lnSpc) return { css: `line-height:${LINE};` };
-  if (para.lnSpc.pct !== undefined) return { css: `line-height:${r4(LINE * para.lnSpc.pct)};` };
-  const px = para.lnSpc.pt * PX_PER_PT;
-  void firstSize;
-  return { css: `line-height:${r2(px)}px;`, px };
+  let px;
+  if (para.lnSpc.pct !== undefined) {
+    if (para.lnSpc.pct <= 1) return { css: `line-height:${r4(LINE * para.lnSpc.pct)};` };
+    const sizes = para.runs.filter((r) => r.kind !== 'br' && r.text).map((r) => r.style.size);
+    const size = sizes.length ? Math.max(...sizes) : para.endStyle.size;
+    px = LINE * para.lnSpc.pct * size * PX_PER_PT;
+  } else px = para.lnSpc.pt * PX_PER_PT;
+  return { css: `--pp-l:${r2(px)}px;`, cls: ' pp-lsb' };
 }
 
 function spacingPx(sp, size) {
@@ -139,7 +149,7 @@ export function paragraphsHtml(tb, rc, o = {}) {
     const p = paras[i];
     const firstRun = p.runs.find((r) => r.kind !== 'br');
     const firstSize = firstRun ? firstRun.style.size : p.endStyle.size;
-    const lh = lineHeight(p, firstSize);
+    const lh = lineHeight(p);
     let ps = `text-align:${p.align === 'distribute' ? 'justify' : p.align};`;
     if (p.align === 'distribute') ps += 'text-align-last:justify;';
     if (p.rtl) ps += 'direction:rtl;';
@@ -153,6 +163,15 @@ export function paragraphsHtml(tb, rc, o = {}) {
     if (before) ps += `margin-top:${r2(before)}px;`;
     if (after) ps += `margin-bottom:${r2(after)}px;`;
     ps += `tab-size:${r2(p.defTab)}px;`;
+    // Tabs are laid out by the runtime (src/runtime/layout.js).
+    const hasTab = !p.rtl && p.runs.some((r) => r.kind !== 'br' && r.text && r.text.includes('\t'));
+    let tabAttrs = '';
+    if (hasTab) {
+      const stops = p.tabs.map((t) => ({ pos: t.pos, algn: t.algn === 'dec' ? 'r' : t.algn }));
+      // A hanging indent acts as a tab stop at the left margin.
+      if (p.indent < 0 && p.marL > 0) stops.push({ pos: p.marL, algn: 'l' });
+      tabAttrs = ` data-tabs="${stops.map((t) => r2(t.pos) + ':' + t.algn).join(',')}" data-deftab="${r2(p.defTab)}"`;
+    }
     let inner = '';
     let hasContent = false;
     for (const r of p.runs) {
@@ -163,7 +182,8 @@ export function paragraphsHtml(tb, rc, o = {}) {
       if (!r.text) continue;
       hasContent = true;
       const st = runCss(r.style, rc, o);
-      const txt = escapeXml(r.text).replace(/\v/g, '<br>');
+      let txt = escapeXml(r.text).replace(/\v/g, '<br>');
+      if (hasTab) txt = txt.replace(/\t/g, '<span class="pp-tab">\t</span>');
       const span = `<span style="${st}"${r.field ? ` data-field="${escapeXml(r.field)}"` : ''}>${txt}</span>`;
       const la = linkAttrs(r.link);
       inner += la ? `<a class="pp-a" ${la}>${span}</a>` : span;
@@ -171,8 +191,9 @@ export function paragraphsHtml(tb, rc, o = {}) {
     // Trailing line break or empty paragraph: keep the line height using the end run size.
     const endCss = `font-size:${r2(p.endStyle.size * PX_PER_PT)}px;font-family:${fontStack(p.endStyle.latin, p.endStyle.ea, p.endStyle.cs)};`;
     if (!hasContent || (p.runs.length && p.runs[p.runs.length - 1].kind === 'br')) inner += `<span style="${endCss}">&#8203;</span>`;
+    if (hasTab) inner += '<span class="pp-tab-end"></span>';
     const bullet = hasContent ? bulletHtml(p, rc) : '';
-    html += `<div class="pp-p" data-para="${p.index}" style="${ps}">${bullet}${inner}</div>`;
+    html += `<div class="pp-p${lh.cls || ''}" data-para="${p.index}" style="${ps}"${tabAttrs}>${bullet}${inner}</div>`;
   }
   return html;
 }

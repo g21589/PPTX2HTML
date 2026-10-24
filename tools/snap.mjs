@@ -9,6 +9,7 @@ import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { chromium } from 'playwright';
 import { loadPresentation, renderDocument } from '../src/index.js';
+import { PLAYER_SOURCE } from '../src/generated/player-source.js';
 
 const args = process.argv.slice(2);
 const file = args[0];
@@ -16,7 +17,7 @@ const out = args[1] || 'out';
 const slidesArg = args.indexOf('--slides') >= 0 ? args[args.indexOf('--slides') + 1].split(',').map((n) => Number(n) - 1) : null;
 fs.mkdirSync(out, { recursive: true });
 const pres = loadPresentation(fs.readFileSync(file), slidesArg ? { slides: slidesArg } : {});
-const html = renderDocument(pres, { mode: 'list', extraCss: '.pp-list .pp-slide{margin:0;box-shadow:none} body.pp-body{background:#fff}' });
+const html = renderDocument(pres, { mode: 'list', player: PLAYER_SOURCE, extraCss: '.pp-list .pp-slide{margin:0;box-shadow:none} body.pp-body{background:#fff}' });
 const htmlPath = path.join(out, 'index.html');
 fs.writeFileSync(htmlPath, html);
 const browser = await chromium.launch();

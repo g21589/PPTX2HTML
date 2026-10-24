@@ -35,7 +35,9 @@ function hasCmd(c) {
   try { execFileSync('which', [c], { stdio: 'ignore' }); return true; } catch (e) { return false; }
 }
 
-fs.rmSync(outDir, { recursive: true, force: true });
+// Start from a clean report but keep LibreOffice references (re-rendered when stale).
+fs.mkdirSync(outDir, { recursive: true });
+for (const f of fs.readdirSync(outDir)) if (f !== 'lo') fs.rmSync(path.join(outDir, f), { recursive: true, force: true });
 fs.mkdirSync(path.join(outDir, 'img'), { recursive: true });
 
 // ---- image helpers ----------------------------------------------------------------
@@ -89,15 +91,20 @@ function diffFraction(a, b) {
 // ---- LibreOffice reference ---------------------------------------------------------
 function libreOfficeRender(file, W, H, dir) {
   fs.mkdirSync(dir, { recursive: true });
-  const filter = 'pdf:impress_pdf_Export:{"ExportHiddenSlides":{"type":"boolean","value":"true"}}';
-  try {
-    execFileSync('soffice', ['--headless', '--convert-to', filter, '--outdir', dir, file], { stdio: 'ignore', timeout: 300000 });
-  } catch (e) {
-    return null;
-  }
   const pdf = path.join(dir, path.basename(file).replace(/\.[^.]+$/, '.pdf'));
-  if (!fs.existsSync(pdf)) return null;
-  execFileSync('pdftoppm', ['-png', '-scale-to-x', String(Math.round(W)), '-scale-to-y', String(Math.round(H)), pdf, path.join(dir, 'p')]);
+  // Reuse a reference rendered from the same input (LibreOffice is slow).
+  const cached = fs.existsSync(pdf) && fs.statSync(pdf).mtimeMs >= fs.statSync(file).mtimeMs;
+  if (!cached) {
+    const filter = 'pdf:impress_pdf_Export:{"ExportHiddenSlides":{"type":"boolean","value":"true"}}';
+    try {
+      execFileSync('soffice', ['--headless', '--convert-to', filter, '--outdir', dir, file], { stdio: 'ignore', timeout: 300000 });
+    } catch (e) {
+      return null;
+    }
+    if (!fs.existsSync(pdf)) return null;
+  }
+  for (const f of fs.readdirSync(dir)) if (/^p-\d+\.png$/.test(f)) fs.rmSync(path.join(dir, f));
+  execFileSync('pdftoppm', ['-png', '-scale-to-x', String(Math.round(W)), '-scale-to-y', String(Math.round(H)), pdf, path.join(dir, 'p')], { stdio: 'ignore' });
   const pages = fs.readdirSync(dir).filter((f) => /^p-\d+\.png$/.test(f)).sort((a, b) => Number(a.match(/\d+/)[0]) - Number(b.match(/\d+/)[0]));
   return pages.map((p) => path.join(dir, p));
 }
@@ -125,10 +132,15 @@ async function domCheck(page, slideNo, c) {
       const t = sec.textContent.replace(/​/g, '');
       return { ok: t.includes(c.contains), msg: t.includes(c.contains) ? '' : 'text not found: ' + c.contains };
     }
+    if (c.kind === 'eval') {
+      // eslint-disable-next-line no-eval
+      const v = (0, eval)('(' + c.fn + ')')(sec);
+      return { ok: v === true, msg: v === true ? c.desc : `${c.desc}: ${v}` };
+    }
     const n = sec.querySelectorAll(c.selector).length;
     const ok = n >= (c.min || 1) && (c.max === undefined || n <= c.max);
     return { ok, msg: `${n} × ${c.selector}` };
-  }, { slideNo, c });
+  }, { slideNo, c: { ...c, fn: c.fn ? String(c.fn) : undefined } });
 }
 
 async function animState(page, c, slideIdx) {
@@ -183,6 +195,7 @@ function judgeAnim(st, expect) {
 }
 
 // ---- main --------------------------------------------------------------------------
+const LIST_CSS = '.pp-list .pp-slide{margin:0;box-shadow:none} body.pp-body{background:#fff}';
 const results = [];
 const t0 = Date.now();
 const browser = await chromium.launch();
@@ -197,7 +210,7 @@ for (const deck of decks) {
   pres.__name = deck.name;
   const W = Math.round(pres.width), H = Math.round(pres.height);
   const listHtml = path.join(outDir, deck.name + '-list.html');
-  fs.writeFileSync(listHtml, renderDocument(pres, { mode: 'list', extraCss: '.pp-list .pp-slide{margin:0;box-shadow:none} body.pp-body{background:#fff}' }));
+  fs.writeFileSync(listHtml, renderDocument(pres, { mode: 'list', player: PLAYER_SOURCE, extraCss: LIST_CSS }));
   const deckHtml = path.join(outDir, deck.name + '.html');
   fs.writeFileSync(deckHtml, renderDocument(pres, { mode: 'deck', player: PLAYER_SOURCE }));
   const page = await browser.newPage({ viewport: { width: W, height: H } });
@@ -241,6 +254,7 @@ for (const deck of decks) {
           }
           case 'text':
           case 'dom':
+          case 'eval':
             r = await domCheck(page, f.slide, c);
             break;
           case 'anim': {
@@ -324,12 +338,13 @@ for (const dir of corpusDirs) {
     const W = Math.round(pres.width), H = Math.round(pres.height);
     if (W * H > 4000 * 4000) continue;
     const html = path.join(outDir, pres.__name + '.html');
-    fs.writeFileSync(html, renderDocument(pres, { mode: 'list', extraCss: '.pp-list .pp-slide{margin:0;box-shadow:none} body.pp-body{background:#fff}' }));
+    fs.writeFileSync(html, renderDocument(pres, { mode: 'list', player: PLAYER_SOURCE, extraCss: LIST_CSS }));
     const page = await browser.newPage({ viewport: { width: Math.min(W, 4000), height: Math.min(H, 4000) } });
     let shots = [];
     try { shots = await screenshotSlides(page, html, pres); } catch (e) { corpus.push({ file: f, error: 'render: ' + e.message }); await page.close(); continue; }
     await page.close();
     const lo = useLO ? libreOfficeRender(file, W, H, path.join(outDir, 'lo', pres.__name)) : null;
+    if (argv.includes('--progress')) console.log(`corpus ${corpus.length} ${f}`);
     pres.slides.forEach((s, i) => {
       const entry = { file: f, slide: i + 1, image: path.relative(outDir, shots[i]) };
       if (lo && lo[i]) {

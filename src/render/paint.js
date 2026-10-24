@@ -88,6 +88,38 @@ function stopsMarkup(stops, reverse = false) {
 }
 
 /**
+ * Rectangular path gradient: colour bands parallel to the box edges that
+ * converge on the focus rectangle (fillToRect). Built from four edge
+ * gradients; each band is also stroked with its own paint to hide seams.
+ */
+function rectGradient(id, fill, w, h, x0, y0, x1, y1, rc, defs) {
+  const cl = (v, m) => Math.max(0, Math.min(m, v));
+  x0 = cl(x0, w); x1 = cl(x1, w); y0 = cl(y0, h); y1 = cl(y1, h);
+  if (x1 < x0) x0 = x1 = (x0 + x1) / 2;
+  if (y1 < y0) y0 = y1 = (y0 + y1) / 2;
+  // Bands are equidistant from the edges: shrink the margins of the longer
+  // axis so that a centred focus becomes a line on non-square boxes.
+  const ah = (x0 + w - x1) / 2, av = (y0 + h - y1) / 2;
+  if (ah > av && ah > 0) { const k = av / ah; x0 *= k; x1 = w - (w - x1) * k; }
+  else if (av > ah && av > 0) { const k = ah / av; y0 *= k; y1 = h - (h - y1) * k; }
+  const stops = stopsMarkup(fill.stops);
+  const band = (pts, gx1, gy1, gx2, gy2) => {
+    const gid = rc.uid('g');
+    defs.push(`<linearGradient id="${gid}" gradientUnits="userSpaceOnUse" x1="${r2(gx1)}" y1="${r2(gy1)}" x2="${r2(gx2)}" y2="${r2(gy2)}">${stops}</linearGradient>`);
+    return `<path d="M${pts.map((p) => r2(p[0]) + ' ' + r2(p[1])).join('L')}Z" fill="url(#${gid})" stroke="url(#${gid})" stroke-width="0.75"/>`;
+  };
+  const first = fill.stops.reduce((a, b) => (b.pos < a.pos ? b : a), fill.stops[0]);
+  const fa = first.color.a === undefined ? 1 : first.color.a;
+  let body = '';
+  if (x0 > 0) body += band([[0, 0], [x0, y0], [x0, y1], [0, h]], x0, 0, 0, 0);
+  if (x1 < w) body += band([[w, 0], [x1, y0], [x1, y1], [w, h]], x1, 0, w, 0);
+  if (y0 > 0) body += band([[0, 0], [w, 0], [x1, y0], [x0, y0]], 0, y0, 0, 0);
+  if (y1 < h) body += band([[0, h], [w, h], [x1, y1], [x0, y1]], 0, y1, 0, h);
+  if (x1 > x0 && y1 > y0) body += `<rect x="${r2(x0)}" y="${r2(y0)}" width="${r2(x1 - x0)}" height="${r2(y1 - y0)}" fill="${css({ ...first.color, a: 1 })}"${fa < 1 ? ` fill-opacity="${r4(fa)}"` : ''}/>`;
+  return `<pattern id="${id}" patternUnits="userSpaceOnUse" x="0" y="0" width="${r2(Math.max(w, 0.01))}" height="${r2(Math.max(h, 0.01))}">${body}</pattern>`;
+}
+
+/**
  * Linear gradient vector for an angle in a w x h box.
  * scaled: angle defined in the unit square then stretched to the box.
  */
@@ -267,10 +299,12 @@ export function svgPaint(fill, w, h, rc, defs, o = {}) {
         if (fill.path === 'circle') {
           const r = Math.max(Math.hypot(cx, cy), Math.hypot(w - cx, cy), Math.hypot(cx, h - cy), Math.hypot(w - cx, h - cy)) || 1;
           defs.push(`<radialGradient id="${id}" gradientUnits="userSpaceOnUse" cx="${r2(cx)}" cy="${r2(cy)}" r="${r2(r)}">${stopsMarkup(fill.stops)}</radialGradient>`);
-        } else {
-          // rect / shape: elliptical approximation stretched to the box.
+        } else if (fill.path === 'shape' && o.round) {
+          // Shape-following gradient of an elliptical outline: concentric ellipses.
           const rx = Math.max(cx, w - cx) || 1, ry = Math.max(cy, h - cy) || 1;
-          defs.push(`<radialGradient id="${id}" gradientUnits="userSpaceOnUse" cx="0" cy="0" r="1" gradientTransform="translate(${r2(cx)} ${r2(cy)}) scale(${r2(rx * 1.2)} ${r2(ry * 1.2)})">${stopsMarkup(fill.stops)}</radialGradient>`);
+          defs.push(`<radialGradient id="${id}" gradientUnits="userSpaceOnUse" cx="0" cy="0" r="1" gradientTransform="translate(${r2(cx)} ${r2(cy)}) scale(${r2(rx)} ${r2(ry)})">${stopsMarkup(fill.stops)}</radialGradient>`);
+        } else {
+          defs.push(rectGradient(id, fill, w, h, fx0, fy0, fx1, fy1, rc, defs));
         }
         return { paint: `url(#${id})` };
       }

@@ -173,7 +173,34 @@ export function build(deck) {
       ],
     });
     box(s, { name: 'tabs', x: 680, y: 300, w: 560, h: 120, bodyPr: '<a:bodyPr anchor="t"/>', text: [{ pPr: 'defTabSz="914400"', runs: [{ t: 'A\tB\tC\tD', rPr: 'sz="1600"' }] }] });
-    out.push({ slide: s.index, feature: 'text/spacing', compareLO: true, checks: [{ kind: 'dom', selector: '.pp-p[style*="margin-bottom:32px"]', min: 1 }, { kind: 'dom', selector: '.pp-p br', min: 1 }, { kind: 'dom', selector: '.pp-p[style*="line-height:2.4"]', min: 1 }] });
+    // Custom stops: left at 1.5in, centre at 3in, right at 5in.
+    box(s, {
+      name: 'tab stops', x: 680, y: 440, w: 560, h: 120, bodyPr: '<a:bodyPr anchor="t"/>',
+      text: [{ pPr: '', pInner: '<a:tabLst><a:tab pos="1371600" algn="l"/><a:tab pos="2743200" algn="ctr"/><a:tab pos="4572000" algn="r"/></a:tabLst>', runs: [{ t: 'Left\tStop\tCentre\tRight', rPr: 'sz="1600"' }] }],
+    });
+    const pitchCheck = (sec) => {
+      const pitch = (prefix) => {
+        const span = [...sec.querySelectorAll('.pp-p > span')].find((e) => e.textContent.startsWith(prefix));
+        if (!span) return NaN;
+        const r = document.createRange();
+        r.selectNodeContents(span);
+        const tops = [...new Set([...r.getClientRects()].map((q) => Math.round(q.bottom * 10) / 10))];
+        return (tops[tops.length - 1] - tops[0]) / (tops.length - 1);
+      };
+      const got = [pitch('exact 30pt'), pitch('double')];
+      return (Math.abs(got[0] - 40) <= 1 && Math.abs(got[1] - 44.8) <= 1) || 'pitch ' + got.map((v) => v.toFixed(1)).join(', ');
+    };
+    const tabCheck = (sec) => {
+      const p = sec.querySelector('.pp-p[data-tabs^="144:l"]');
+      if (!p) return 'paragraph not found';
+      const o = p.getBoundingClientRect().left;
+      const t = [...p.querySelectorAll('.pp-tab')].map((e) => e.getBoundingClientRect());
+      const end = p.querySelector('.pp-tab-end').getBoundingClientRect().left;
+      const got = [t[0].right - o, (t[1].right + t[2].left) / 2 - o, end - o];
+      const exp = [144, 288, 480];
+      return got.every((v, i) => Math.abs(v - exp[i]) <= 2) || 'stops at ' + got.map((v) => v.toFixed(1)).join(', ');
+    };
+    out.push({ slide: s.index, feature: 'text/spacing', compareLO: true, checks: [{ kind: 'dom', selector: '.pp-p[style*="margin-bottom:32px"]', min: 1 }, { kind: 'dom', selector: '.pp-p br', min: 1 }, { kind: 'eval', desc: 'line pitch: exact 30pt = 40px, double 14pt = 44.8px', fn: pitchCheck }, { kind: 'eval', desc: 'left / centre / right tab stops', fn: tabCheck }] });
   }
 
   // --- Vertical text, rotation ------------------------------------------------------
