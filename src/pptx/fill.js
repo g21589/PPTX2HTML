@@ -43,7 +43,8 @@ export function parseFillNode(node, ctx) {
         if (color) stops.push({ pos: pct(gs.attrs.pos, 0), color });
       }
       stops.sort((a, b) => a.pos - b.pos);
-      if (!stops.length) return { type: 'none' };
+      // Without a stop list the stops are inherited (see SlideBuilder.visual).
+      if (!stops.length && gsLst) return { type: 'none' };
       const lin = node.child('a:lin');
       const path = node.child('a:path');
       const g = {
@@ -328,7 +329,8 @@ export function fillFromRef(ref, ctx) {
   if (idx >= 1000) node = theme.bgFillStyles[idx - 1001];
   else node = theme.fillStyles[idx - 1];
   if (!node) return phClr ? { type: 'solid', color: phClr } : undefined;
-  return parseFillNode(node, ctx.with({ phClr }));
+  // Pictures in the style matrix are relationships of the theme part.
+  return parseFillNode(node, ctx.with({ phClr, part: theme.partName || ctx.part }));
 }
 
 export function lineFromRef(ref, ctx) {
@@ -338,7 +340,7 @@ export function lineFromRef(ref, ctx) {
   const phClr = refColor(ref, ctx);
   const node = ctx.theme.lineStyles[idx - 1];
   if (!node) return phClr ? { fill: { type: 'solid', color: phClr }, w: 0.75 } : null;
-  return parseLine(node, ctx.with({ phClr }));
+  return parseLine(node, ctx.with({ phClr, part: ctx.theme.partName || ctx.part }));
 }
 
 export function effectsFromRef(ref, ctx) {

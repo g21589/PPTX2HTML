@@ -225,6 +225,19 @@ function reflectionMarkup(rf, w, h, geomId, rc, defs) {
   return `<g transform="translate(0 ${r2(h + rf.dist)})"><g mask="url(#${mid})"><g${blur} transform="scale(${r4(rf.sx || 1)} ${r4(-sy)}) translate(0 ${r2(-h)})"><use href="#${geomId}"/></g></g></g>`;
 }
 
+/** Paint showing the slide background at the element's position (useBgFill). */
+function backgroundPaint(el, rc, defs) {
+  const bg = rc.slide && rc.slide.background && rc.slide.background.fill;
+  if (!bg || bg.type === 'none') return { paint: '#ffffff' };
+  const { width: W, height: H } = rc.pres;
+  const p = svgPaint(bg, W, H, rc, defs, {});
+  if (p.paint === 'none' || bg.type === 'solid') return p;
+  const id = rc.uid('bg');
+  const o = rc.origin || { x: 0, y: 0 };
+  defs.push(`<pattern id="${id}" patternUnits="userSpaceOnUse" x="${r2(-(o.x + el.x))}" y="${r2(-(o.y + el.y))}" width="${r2(W)}" height="${r2(H)}"><rect width="${r2(W)}" height="${r2(H)}" fill="${p.paint}"${p.opacity !== undefined ? ` fill-opacity="${p.opacity}"` : ''}/></pattern>`);
+  return { paint: `url(#${id})` };
+}
+
 /**
  * SVG markup for an element's geometry.
  * @param {object} el element model (shape or picture)
@@ -242,7 +255,7 @@ export function geometrySvg(el, rc, o = {}) {
   const line = el.line;
   const round = /^(ellipse|donut|pie|chord|arc|blockArc|flowChartConnector|flowChartOffpageConnector|smileyFace|noSmoking|sun|moon|cloud|teardrop)$/.test(geom.name || '');
   const linePaint = line ? svgPaint(line.fill, w, h, rc, defs, { rot, round }) : null;
-  const fillPaint = svgPaint(fill, w, h, rc, defs, { rot, round });
+  const fillPaint = fill && fill.type === 'bg' ? backgroundPaint(el, rc, defs) : svgPaint(fill, w, h, rc, defs, { rot, round });
   const geomId = rc.uid('ge');
   let body = '';
   let strokes = '';

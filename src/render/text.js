@@ -43,7 +43,7 @@ export function runCss(st, rc, o = {}) {
   const f = st.fill;
   if (f && f.type === 'solid') s += `color:${css(f.color)};`;
   else if (f && f.type === 'none') s += 'color:transparent;';
-  else if (f && (f.type === 'grad' || f.type === 'blip' || f.type === 'patt')) {
+  else if (f && ((f.type === 'grad' && f.stops.length) || f.type === 'blip' || f.type === 'patt')) {
     const bg = cssBackground(f, rc);
     const c = fillColor(f);
     s += `color:${c ? css(c) : '#000'};background:${bg};-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;`;

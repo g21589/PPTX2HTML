@@ -100,7 +100,15 @@ function picHtml(el, rc) {
 }
 
 function groupHtml(el, rc) {
-  const kids = (el.children || []).map((c) => elementHtml(c, rc)).join('');
+  // Children are positioned relative to the group box.
+  const origin = rc.origin || { x: 0, y: 0 };
+  rc.origin = { x: origin.x + el.x, y: origin.y + el.y };
+  let kids;
+  try {
+    kids = (el.children || []).map((c) => elementHtml(c, rc)).join('');
+  } finally {
+    rc.origin = origin;
+  }
   if (!kids) return '';
   let st = boxCss(el);
   const fx = el.effects;
@@ -146,6 +154,7 @@ export function backgroundHtml(slide, rc, width, height) {
 export function slideHtml(slide, rc) {
   const { width, height } = rc.pres;
   rc.slide = slide;
+  rc.origin = { x: 0, y: 0 };
   let html = backgroundHtml(slide, rc, width, height);
   for (const el of slide.elements) html += elementHtml(el, rc);
   const attrs = [

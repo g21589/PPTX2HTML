@@ -452,6 +452,20 @@ export class SlideBuilder {
       if (f !== undefined) { fill = f; break; }
     }
     if (fill === undefined && style) fill = fillFromRef(style.child('a:fillRef'), styleCtx);
+    else if (fill && fill.type === 'grad' && !fill.stops.length) {
+      // A gradient without stops takes them from the style matrix (or from the
+      // next level of the inheritance chain).
+      let base = style ? fillFromRef(style.child('a:fillRef'), styleCtx) : undefined;
+      if (!base || base.type !== 'grad') {
+        for (const { node, ctx } of chain.slice(1)) {
+          const spPr = pc(node, spPrName);
+          const f = spPr ? parseFill(spPr, ctx) : undefined;
+          if (f && f.type === 'grad' && f.stops.length) { base = f; break; }
+        }
+      }
+      if (base && base.type === 'grad') fill = { ...fill, stops: base.stops };
+      else if (base && base.type === 'solid') fill = base;
+    }
     // Line.
     const parts = [];
     if (style) parts.push(lineFromRef(style.child('a:lnRef'), styleCtx));
@@ -498,7 +512,9 @@ export class SlideBuilder {
     const ph = el.ph;
     const lists = [doc.defaultTextStyle];
     const master = this.master;
-    if (master) {
+    // Placeholders use the master's title/body/other styles; other text on
+    // slides uses the presentation defaults, on masters and layouts otherStyle.
+    if (master && (ph || o.layer !== 'slide')) {
       lists.push(ph ? master.textStyleFor(ph.type) : master.otherStyle);
     }
     const bodyChain = [];
@@ -529,6 +545,8 @@ export class SlideBuilder {
     this.applyXfrm(el, xf, o);
     el.geom = this.geometry(chain, el);
     this.visual(chain, el);
+    // useBgFill: the shape shows the slide background behind it.
+    if (/^(1|true)$/.test(node.attrs.useBgFill || '')) el.fill = { type: 'bg' };
     if (!isConnector) {
       el.text = this.text(chain, el, o, ctx);
       // dsp:txXfrm (SmartArt drawings) positions the text separately.
@@ -711,9 +729,10 @@ export class SlideBuilder {
     if (pic) {
       const bf = pic.child('p:blipFill');
       blip = bf ? parseBlipFill(bf, ctx) : null;
-    } else if (ole.attrs['r:id'] || ole.attrs.spid) {
-      // Legacy VML preview: find image rel of the vml drawing.
-      ctx.note('approx', 'OLE object without picture preview');
+    } else if (ole.attrs.spid) {
+      const image = this.vmlImage(ole.attrs.spid, ctx);
+      if (image) blip = { type: 'blip', image, srcRect: null, rotWithShape: true, dpi: 0, alpha: 1, effects: [] };
+      else ctx.note('approx', 'OLE object without picture preview');
     }
     el.kind = 'pic';
     el.ole = { progId: ole.attr('progId', ''), name: ole.attr('name', '') };
@@ -728,6 +747,22 @@ export class SlideBuilder {
     el.blip = blip;
     void chain;
     return el;
+  }
+
+  /** Preview picture of a legacy object: the VML shape with the given spid. */
+  vmlImage(spid, ctx) {
+    const pkg = this.doc.pkg;
+    for (const r of pkg.relsByType(ctx.part, 'vmlDrawing')) {
+      if (r.external || !pkg.has(r.partName)) continue;
+      const vml = pkg.text(r.partName);
+      const id = spid.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const m = new RegExp(`<v:shape\\b[^>]*\\b(?:id|o:spid)=["']${id}["'][\\s\\S]*?</v:shape>`).exec(vml);
+      if (!m) continue;
+      const img = /<v:imagedata\b[^>]*\b(?:o:relid|r:id)=["']([^"']+)["']/.exec(m[0]);
+      if (!img) continue;
+      return ctx.with({ part: r.partName }).image(img[1]);
+    }
+    return null;
   }
 
   diagram(gd, ctx, o, el) {

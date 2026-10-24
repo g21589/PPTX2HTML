@@ -284,7 +284,7 @@ function tilePattern(fill, w, h, rc, defs) {
  * @param {object} o {rot, w, h} shape rotation for rotWithShape="0" handling
  */
 export function svgPaint(fill, w, h, rc, defs, o = {}) {
-  if (!fill || fill.type === 'none') return { paint: 'none' };
+  if (!fill || fill.type === 'none' || (fill.type === 'grad' && !fill.stops.length)) return { paint: 'none' };
   switch (fill.type) {
     case 'solid': {
       const a = fill.color.a === undefined ? 1 : fill.color.a;
@@ -334,7 +334,7 @@ export function svgPaint(fill, w, h, rc, defs, o = {}) {
 
 /** CSS background for a fill (used by text runs, table cells, backgrounds). */
 export function cssBackground(fill, rc, w = 100, h = 100) {
-  if (!fill || fill.type === 'none') return '';
+  if (!fill || fill.type === 'none' || (fill.type === 'grad' && !fill.stops.length)) return '';
   switch (fill.type) {
     case 'solid':
       return css(fill.color);

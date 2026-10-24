@@ -230,7 +230,17 @@ export function build(deck) {
     for (const [t, bg, pts] of bgs) {
       const s = deck.slide({ name: t, bg });
       label(s, t);
-      out.push({ slide: s.index, feature: 'background/' + t.split(' ')[0].toLowerCase(), compareLO: true, checks: pts.map(([x, y, c]) => ({ kind: 'pixel', x, y, color: c, tol: 25 })) });
+      const checks = pts.map(([x, y, c]) => ({ kind: 'pixel', x, y, color: c, tol: 25 }));
+      if (t.startsWith('Gradient')) {
+        // A shape with useBgFill shows the slide background over a red shape.
+        s.add(shape({ id: s.id(), name: 'red', x: 100, y: 200, w: 400, h: 400, fill: solid('FF0000') }));
+        s.add(shape({ id: s.id(), name: 'bgfill', x: 200, y: 300, w: 200, h: 200, prst: 'roundRect', fill: '', useBgFill: true }));
+        checks.push({ kind: 'pixel', x: 300, y: 400, color: '#839DB5', tol: 25 }, { kind: 'pixel', x: 150, y: 400, color: '#FF0000', tol: 25 });
+        // A gradient without a stop list takes the stops of the style's fillRef.
+        s.add(shape({ id: s.id(), name: 'grad no stops', x: 700, y: 200, w: 400, h: 400, fill: '<a:gradFill rotWithShape="1"><a:lin ang="0" scaled="0"/></a:gradFill>', style: '<p:style><a:lnRef idx="0"><a:schemeClr val="accent1"/></a:lnRef><a:fillRef idx="3"><a:schemeClr val="accent2"/></a:fillRef><a:effectRef idx="0"><a:schemeClr val="accent1"/></a:effectRef><a:fontRef idx="minor"><a:schemeClr val="lt1"/></a:fontRef></p:style>' }));
+        checks.push({ kind: 'lumBelow', x: 900, y: 400, max: 200 });
+      }
+      out.push({ slide: s.index, feature: 'background/' + t.split(' ')[0].toLowerCase(), compareLO: true, checks });
     }
     const s = deck.slide({ name: 'Picture background', layout: 'blank' });
     const rid = s.image(photo(), 'png');

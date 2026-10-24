@@ -234,7 +234,7 @@ export function txBody(paras, o = {}) {
 
 /**
  * Generic shape.
- * o: {id, name, x, y, w, h, prst, av, geom (custom xml), fill, line, effects, text, style, rot, flipH, flipV, ph, extraSpPr, hlink, descr}
+ * o: {id, name, x, y, w, h, prst, av, geom (custom xml), fill, line, effects, text, style, rot, flipH, flipV, ph, extraSpPr, hlink, descr, useBgFill}
  */
 export function shape(o) {
   const geom = o.geom || `<a:prstGeom prst="${o.prst || 'rect'}"><a:avLst>${o.av || ''}</a:avLst></a:prstGeom>`;
@@ -246,7 +246,7 @@ export function shape(o) {
     : `<p:nvSpPr><p:cNvPr id="${o.id}" name="${esc(o.name || 'Shape ' + o.id)}"${o.descr ? ` descr="${esc(o.descr)}"` : ''}${o.hidden ? ' hidden="1"' : ''}>${o.hlink || ''}</p:cNvPr><p:cNvSpPr${o.txBox ? ' txBox="1"' : ''}/>${nvPr}</p:nvSpPr>`;
   const spPr = o.ph && o.noXfrm ? `<p:spPr>${o.fill || ''}${o.line || ''}</p:spPr>` : `<p:spPr>${xfrm(o.x, o.y, o.w, o.h, o)}${geom}${o.fill || ''}${o.line || ''}${o.effects || ''}${o.extraSpPr || ''}</p:spPr>`;
   const text = o.text === undefined ? '' : (typeof o.text === 'string' && o.text.startsWith('<p:txBody') ? o.text : txBody(o.text, o));
-  return `<p:${tag}>${nv}${spPr}${o.cxn ? '' : style}${o.cxn ? (o.style || '') : ''}${text}</p:${tag}>`;
+  return `<p:${tag}${o.useBgFill ? ' useBgFill="1"' : ''}>${nv}${spPr}${o.cxn ? '' : style}${o.cxn ? (o.style || '') : ''}${text}</p:${tag}>`;
 }
 
 /** Text box (no fill / line, black text). */
