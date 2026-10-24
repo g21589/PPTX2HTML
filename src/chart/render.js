@@ -654,11 +654,11 @@ class ChartRenderer {
     if (reversed) idx = n - 1 - i;
     if (ca.between) {
       const size = len / n;
-      return { start: origin + idx * size, size, center: origin + (idx + 0.5) * size };
+      return { start: origin + idx * size, size, center: origin + (idx + 0.5) * size, reversed };
     }
     const size = n > 1 ? len / (n - 1) : len;
     const center = n > 1 ? origin + idx * size : origin + len / 2;
-    return { start: center - size / 2, size, center };
+    return { start: center - size / 2, size, center, reversed };
   }
 
   crossValue(gi) {
@@ -859,7 +859,9 @@ class ChartRenderer {
         if (v === null || v === undefined || !Number.isFinite(v)) continue;
         const band = this.catBand(gi, i, area);
         const bw = band.size / (k - (k - 1) * ov + gap);
-        const startOff = band.start + (gap * bw) / 2 + (stacked ? 0 : sIdx * bw * (1 - ov));
+        let startOff = band.start + (gap * bw) / 2 + (stacked ? 0 : sIdx * bw * (1 - ov));
+        // Series follow the category axis: the first one sits nearest its start.
+        if (band.reversed) startOff = 2 * band.start + band.size - startOff - bw;
         let v0, v1;
         if (stacked) {
           if (p.grouping === 'percentStacked') v = acc.totals[i] ? v / acc.totals[i] : 0;

@@ -202,7 +202,14 @@ export function build(deck) {
       ['Radar', `<c:radarChart><c:radarStyle val="marker"/><c:varyColors val="0"/>${series(0, 'r1', ['a', 'b', 'c', 'd', 'e'], [4, 3, 5, 2, 4])}${series(1, 'r2', ['a', 'b', 'c', 'd', 'e'], [2, 5, 3, 4, 1])}<c:axId val="1"/><c:axId val="2"/></c:radarChart>${axes('b', 'l', { grid: true })}`],
       ['Stock (HLC)', `<c:stockChart>${series(0, 'High', cats, [12, 14, 13, 15])}${series(1, 'Low', cats, [8, 9, 10, 11])}${series(2, 'Close', cats, [10, 12, 11, 14], '<c:spPr><a:ln><a:noFill/></a:ln></c:spPr><c:marker><c:symbol val="dash"/><c:size val="8"/></c:marker>')}<c:hiLowLines/><c:axId val="1"/><c:axId val="2"/></c:stockChart>${axes()}`],
       ['Combo + data labels', `<c:barChart><c:barDir val="col"/><c:grouping val="clustered"/><c:varyColors val="0"/>${series(0, 'Units', cats, [120, 150, 90, 180], '<c:dLbls><c:showLegendKey val="0"/><c:showVal val="1"/><c:showCatName val="0"/><c:showSerName val="0"/><c:showPercent val="0"/><c:showBubbleSize val="0"/></c:dLbls>')}<c:axId val="1"/><c:axId val="2"/></c:barChart><c:lineChart><c:grouping val="standard"/><c:varyColors val="0"/>${series(1, 'Trend', cats, [100, 130, 110, 170])}<c:marker val="1"/><c:axId val="1"/><c:axId val="2"/></c:lineChart>${axes('b', 'l', { title: 'Units' })}`],
+      ['Clustered bar (horizontal)', `<c:barChart><c:barDir val="bar"/><c:grouping val="clustered"/><c:varyColors val="0"/>${series(0, 'First', cats, [4, 3, 2, 5])}${series(1, 'Second', cats, [2, 4, 3, 1])}<c:gapWidth val="80"/><c:axId val="1"/><c:axId val="2"/></c:barChart>${axes('l', 'b')}`],
     ];
+    const barOrderCheck = (sec) => {
+      const r = [...sec.querySelectorAll('.pp-chart-bars rect')].map((e) => e.getBoundingClientRect().top);
+      if (r.length !== 8) return r.length + ' bars';
+      // Bars of series First come first (Q1..Q4), then Second.
+      return (r[0] > r[3] && r[0] > r[4] && r[3] > r[7]) || 'bar tops ' + r.map((v) => v.toFixed(0)).join(' ');
+    };
     for (let k = 0; k < charts.length; k += 6) {
       const s = deck.slide({ name: 'Charts ' + (k / 6 + 1) });
       label(s, 'Charts ' + (k / 6 + 1));
@@ -215,7 +222,8 @@ export function build(deck) {
       out.push({
         slide: s.index, feature: 'chart/' + (k / 6 + 1), compareLO: true,
         checks: [{ kind: 'dom', selector: '.pp-chart svg', min: sub.length }, { kind: 'text', contains: sub[0][0] }, { kind: 'model', desc: 'chart series parsed', fn: (sl) => sl.elements.filter((e) => e.kind === 'chart' && e.chart.series.length).length === sub.length },
-          ...(k === 0 ? [{ kind: 'dom', selector: '.pp-chart-err path', min: 8 }] : [])],
+          ...(k === 0 ? [{ kind: 'dom', selector: '.pp-chart-err path', min: 8 }] : []),
+          ...(k === 12 ? [{ kind: 'eval', desc: 'horizontal bars: first category and first series at the bottom', fn: barOrderCheck }] : [])],
       });
     }
   }
