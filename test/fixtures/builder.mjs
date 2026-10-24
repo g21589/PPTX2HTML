@@ -215,6 +215,8 @@ export const solid = (hex, mods = '') => `<a:solidFill><a:srgbClr val="${hex}">$
 export const scheme = (name, mods = '') => `<a:solidFill><a:schemeClr val="${name}">${mods}</a:schemeClr></a:solidFill>`;
 export const ln = (w, fill = solid('000000'), extra = '') => `<a:ln w="${Math.round(w * 12700)}">${fill}${extra}</a:ln>`;
 
+let fieldSeq = 0;
+
 /** Text body from a simple description. */
 export function txBody(paras, o = {}) {
   const body = o.bodyPr || '<a:bodyPr wrap="square" rtlCol="0" anchor="ctr"/>';
@@ -222,7 +224,7 @@ export function txBody(paras, o = {}) {
     if (typeof p === 'string') p = { runs: [{ t: p }] };
     const runs = (p.runs || []).map((r) => {
       if (r.br) return `<a:br>${r.rPr ? `<a:rPr ${r.rPr}/>` : ''}</a:br>`;
-      if (r.fld) return `<a:fld id="{00000000-0000-0000-0000-00000000000${Math.floor(Math.random() * 9)}}" type="${r.fld}"><a:rPr lang="en-US" ${r.rPr || ''}>${r.inner || ''}</a:rPr><a:t>${esc(r.t || '')}</a:t></a:fld>`;
+      if (r.fld) return `<a:fld id="{B6F15528-21DE-4FAA-801E-${(++fieldSeq).toString(16).toUpperCase().padStart(12, '0')}}" type="${r.fld}"><a:rPr lang="en-US" ${r.rPr || ''}>${r.inner || ''}</a:rPr><a:t>${esc(r.t || '')}</a:t></a:fld>`;
       return `<a:r><a:rPr lang="${r.lang || 'en-US'}" dirty="0" ${r.rPr || ''}>${r.inner || ''}</a:rPr><a:t>${esc(r.t)}</a:t></a:r>`;
     }).join('');
     return `<a:p>${p.pPr !== undefined ? `<a:pPr ${p.pPr}>${p.pInner || ''}</a:pPr>` : (p.pInner ? `<a:pPr>${p.pInner}</a:pPr>` : '')}${runs}<a:endParaRPr lang="en-US" dirty="0" ${p.endRPr || ''}/></a:p>`;
