@@ -145,9 +145,10 @@ heads, shadows, glows, reflections, soft edges, blur, 3D rotation, bevel and
 extrusion approximations, rotation and flipping.
 
 **Text**: fonts (Latin / East Asian / complex script, theme fonts, embedded
-fonts), sizes, bold, italic, underline styles, strike, caps, baseline,
-spacing, kerning, highlight, outline, gradient text, shadows, bullets
-(characters, pictures, auto-numbering), indents, tab stops, line and
+EOT fonts including MicroType Express compressed ones), sizes, bold, italic,
+underline styles, strike, caps, baseline, spacing, kerning, highlight,
+outline, gradient text, shadows, bullets (characters, pictures,
+auto-numbering), indents, tab stops, line and
 paragraph spacing (extra spacing above the line, as Office does), alignment,
 vertical text, columns, insets, autofit (font scale and line spacing
 reduction), WordArt transforms (all 40 warp and follow-path presets),
@@ -182,9 +183,8 @@ curtains, wind, fracture, page curl, airplane, origami/fall over…), Morph,
 speed / duration, sounds, and advance on click or after time.
 
 Limitations: 3D models, ink without a fallback picture, and EMF+-only
-metafiles are not drawn; 3D effects and 3D charts are approximations;
-compressed EOT fonts fall back to installed fonts. Each case is reported in
-`diagnostics`.
+metafiles are not drawn; 3D effects and 3D charts are approximations.
+Each case is reported in `diagnostics`.
 
 Self-verification
 -----------------
