@@ -486,7 +486,7 @@ export function parseChartPart(doc, part, ctx, el, isChartEx = false) {
         }
         plot.series.sort((a, b) => a.order - b.order);
         chart.plots.push(plot);
-        if (/3D/.test(c.local)) ctx.note('approx', '3D chart rendered in 2D');
+        if (/3D/.test(c.local) && c.local !== 'bar3DChart' && c.local !== 'pie3DChart') ctx.note('approx', '3D chart rendered in 2D');
         if (/surface/.test(c.local)) ctx.note('approx', 'surface chart');
       } else if (/Ax$/.test(c.local)) {
         const ax = parseAxis(c, ctx, baseText);

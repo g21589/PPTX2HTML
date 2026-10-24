@@ -48,4 +48,11 @@ test('zip: read entries, case-insensitive lookup, recovery without central direc
   const truncated = buf.subarray(0, firstCd);
   const z2 = new ZipArchive(truncated);
   assert.equal(z2.text('a.txt'), 'hello');
+  // Central directory offset pointing outside the file: local headers are used.
+  const damaged = Buffer.from(buf);
+  const eocd = damaged.lastIndexOf(Buffer.from([0x50, 0x4b, 0x05, 0x06]));
+  damaged.writeUInt32LE(0x7ffffff0, eocd + 16);
+  const z3 = new ZipArchive(damaged);
+  assert.equal(z3.text('a.txt'), 'hello');
+  assert.equal(z3.text('Dir/B.xml').length, 800);
 });

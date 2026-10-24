@@ -179,27 +179,41 @@ export function paragraphsHtml(tb, rc, o = {}) {
       tabAttrs = ` data-tabs="${stops.map((t) => r2(t.pos) + ':' + t.algn).join(',')}" data-deftab="${r2(p.defTab)}"`;
     }
     let inner = '';
-    let hasContent = false;
+    const hasContent = p.runs.some((r) => r.kind !== 'br' && r.text);
+    let bullet = hasContent ? bulletHtml(p, rc, o) : '';
+    let lineEmpty = true;
     for (const r of p.runs) {
       if (r.kind === 'br') {
+        // A line holding only a break still takes the height of its text size.
+        if (lineEmpty) inner += `<span style="${fontSize(r.style.size * PX_PER_PT, o)}font-family:${fontStack(r.style.latin, r.style.ea, r.style.cs)};">&#8203;</span>`;
         inner += `<br>`;
+        lineEmpty = true;
         continue;
       }
       if (!r.text) continue;
-      hasContent = true;
-      const st = runCss(r.style, rc, o);
+      lineEmpty = false;
+      let st = runCss(r.style, rc, o);
       let txt = escapeXml(r.text).replace(/\v/g, '<br>');
       if (hasTab) txt = txt.replace(/\t/g, '<span class="pp-tab">\t</span>');
-      const span = `<span style="${st}"${r.field ? ` data-field="${escapeXml(r.field)}"` : ''}>${txt}</span>`;
+      // Office never wraps between the bullet and the text: a word too long
+      // for the line breaks inside instead. The bullet is glued to the first
+      // run, which may still wrap.
+      const glue = bullet && !o.nowrap && !/^[\t\v]/.test(r.text);
+      if (glue) st += 'white-space:pre-wrap;';
+      let span = `<span style="${st}"${r.field ? ` data-field="${escapeXml(r.field)}"` : ''}>${txt}</span>`;
       const la = linkAttrs(r.link);
-      inner += la ? `<a class="pp-a" ${la}>${span}</a>` : span;
+      if (la) span = `<a class="pp-a" ${la}>${span}</a>`;
+      if (bullet) {
+        span = glue ? `<span class="pp-bu-w">${bullet}${span}</span>` : bullet + span;
+        bullet = '';
+      }
+      inner += span;
     }
     // Trailing line break or empty paragraph: keep the line height using the end run size.
     const endCss = `${fontSize(p.endStyle.size * PX_PER_PT, o)}font-family:${fontStack(p.endStyle.latin, p.endStyle.ea, p.endStyle.cs)};`;
     if (!hasContent || (p.runs.length && p.runs[p.runs.length - 1].kind === 'br')) inner += `<span style="${endCss}">&#8203;</span>`;
     if (hasTab) inner += '<span class="pp-tab-end"></span>';
-    const bullet = hasContent ? bulletHtml(p, rc, o) : '';
-    html += `<div class="pp-p${lh.cls || ''}" data-para="${p.index}" style="${ps}"${tabAttrs}>${bullet}${inner}</div>`;
+    html += `<div class="pp-p${lh.cls || ''}" data-para="${p.index}" style="${ps}"${tabAttrs}>${inner}</div>`;
   }
   return html;
 }
@@ -255,5 +269,8 @@ export function textBodyHtml(tb, box, rc, o = {}) {
   let inner = paragraphsHtml(tb, rc, { ...o, nowrap: b.wrap === 'none' && !vertical, fit });
   if (b.numCol > 1) inner = `<div class="pp-cols" style="column-count:${b.numCol};column-gap:${r2(b.spcCol)}px;column-fill:auto;height:100%">${inner}</div>`;
   else if (b.anchorCtr) inner = `<div class="pp-actr-in">${inner}</div>`;
-  return `<div class="${cls}" style="${s}"${fit ? ` data-fit="${b.autofit.type}"` : ''}${warpAttr(b, w, h)}>${inner}</div>`;
+  // Office's own fit (stored scale, or a shape sized to its text) only gets a small correction.
+  const stored = fit && (b.autofit.type === 'shape' || b.autofit.fontScale < 1 || b.autofit.lnSpcReduction > 0);
+  const fitAttr = fit ? ` data-fit="${b.autofit.type}"${stored ? ' data-fit-min="0.8"' : ''}` : '';
+  return `<div class="${cls}" style="${s}"${fitAttr}${warpAttr(b, w, h)}>${inner}</div>`;
 }
